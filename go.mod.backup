@@ -1,0 +1,14 @@
+module github.com/tu-usuario/cryptotoolkit-go
+
+go 1.21
+
+require (
+    github.com/gin-gonic/gin v1.9.1
+    github.com/spf13/cobra v1.8.0
+    github.com/spf13/viper v1.17.0
+    github.com/swaggo/swag v1.16.2
+    github.com/swaggo/gin-swagger v1.6.0
+    github.com/stretchr/testify v1.8.4
+    go.uber.org/zap v1.26.0
+    github.com/gorilla/websocket v1.5.1
+)
