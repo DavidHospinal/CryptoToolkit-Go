@@ -432,3 +432,48 @@ body {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+/* ============================================================================
+   TOOLTIPS - ESTILOS PERSONALIZADOS
+   ============================================================================ */
+
+/* Estilo para elementos con tooltip */
+
+[data-tippy-root] {
+    max-width: calc(100vw - 20px);
+}
+
+.tippy-box[data-theme~='dark'] {
+    background-color: rgba(26, 26, 46, 0.95);
+    border: 1px solid #0f4c75;
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+.tippy-box[data-theme~='dark'] .tippy-arrow {
+    color: rgba(26, 26, 46, 0.95);
+}
+
+/* Elementos con tooltip tendrán un sutil subrayado punteado */
+.tooltip-enabled {
+    border-bottom: 1px dotted #3282b8 !important;
+    cursor: help !important;
+    transition: border-color 0.2s ease;
+}
+
+.tooltip-enabled:hover {
+    border-bottom-color: #bbe1fa !important;
+}
+
+/* Animación suave para los tooltips */
+.tippy-box {
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+/* Responsive para móviles */
+@media (max-width: 768px) {
+    .tippy-box {
+        max-width: 90vw !important;
+        font-size: 13px;
+    }
+}

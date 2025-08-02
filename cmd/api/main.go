@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/DavidHospinal/CryptoToolkit-Go/internal/config"
 	"github.com/DavidHospinal/CryptoToolkit-Go/pkg/crypto/hash"
@@ -201,6 +202,18 @@ func main() {
 	}
 
 	r := gin.Default()
+
+	// MIDDLEWARE
+	r.Use(func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.URL.Path, "/static/") {
+			c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+			c.Header("Pragma", "no-cache")
+			c.Header("Expires", "0")
+		}
+		c.Next()
+	})
+
+	// Middleware CORS
 
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
