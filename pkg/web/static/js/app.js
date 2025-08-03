@@ -191,6 +191,29 @@ function handleButtonAction(action, moduleKey) {
             }
             break;
 
+        //MANEJO DE ACCIONES Merkle'
+        case 'merkle':
+            if (moduleKey === 'hash') {
+                showSection('merkle-section');
+            }
+            break;
+
+        case 'execute-merkle':
+            if (currentModule === 'hash') {
+                buildMerkleTree();
+            }
+            break;
+
+        case 'execute-merkle-verify':
+            if (currentModule === 'hash') {
+                verifyMerkleProof();
+            }
+            break;
+
+        case 'hash-learn':
+            showHashLearnContent();
+            break;
+
         default:
             console.log('Accion no reconocida:', action);
     }
@@ -270,9 +293,10 @@ function showModuleInterface(moduleKey) {
     if (!sectionElement) {
         const sectionMap = {
             'otp-encrypt': 'otp-section',
-            'sha256-hash': 'sha256-section',
             'aes-encrypt': 'aes-section',
-            'rsa-keygen': 'rsa-section'
+            'rsa-keygen': 'rsa-section',
+            'sha256-hash': 'sha256-section',
+            'merkle-trees': 'merkle-section'
         };
         sectionElement = document.getElementById(sectionMap[targetSection]);
     }
@@ -473,6 +497,27 @@ function displaySHA256Results(response) {
     document.getElementById('sha256-original').textContent = response.input;
     document.getElementById('sha256-hash').textContent = response.hash;
 
+    // Mostrar pasos si están disponibles
+    if (response.steps && response.steps.length > 0) {
+        const stepsContainer = document.getElementById('sha256-steps');
+        const stepsList = document.getElementById('sha256-steps-list');
+
+        stepsList.innerHTML = '';
+        response.steps.forEach(step => {
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'step-item';
+            stepDiv.textContent = 'Paso ' + step.step + ': ' + step.operation;
+            stepsList.appendChild(stepDiv);
+        });
+
+        stepsContainer.style.display = 'block';
+    } else {
+        const stepsContainer = document.getElementById('sha256-steps');
+        if (stepsContainer) {
+            stepsContainer.style.display = 'none';
+        }
+    }
+
     resultsArea.scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -545,7 +590,6 @@ function showOTPLearnContent() {
     alert(learnContent);
 }
 
-
 // AES Encryption functions
 async function encryptAES() {
     const message = document.getElementById('aes-message').value;
@@ -600,6 +644,145 @@ async function generateRSAKeys() {
     } catch (error) {
         alert('Generación de claves RSA falló: ' + error.message);
     }
+}
+// Merkle Tree functions
+async function buildMerkleTree() {
+    const dataInput = document.getElementById('merkle-data').value;
+    const explain = document.getElementById('merkle-explain').checked;
+
+    if (!dataInput.trim()) {
+        alert('Por favor ingrese datos para construir el árbol de Merkle.');
+        return;
+    }
+
+    const dataArray = dataInput.split(',').map(item => item.trim()).filter(item => item.length > 0);
+
+    if (dataArray.length < 2) {
+        alert('Se necesitan al menos 2 elementos para construir un árbol de Merkle.');
+        return;
+    }
+
+    try {
+        const response = await makeAPIRequest('/hash/merkle', {
+            data: dataArray,
+            explain: explain
+        });
+
+        if (response.success) {
+            displayMerkleResults(response);
+        } else {
+            alert('Construcción del árbol de Merkle falló: ' + (response.error || 'Error desconocido'));
+        }
+    } catch (error) {
+        alert('Construcción del árbol de Merkle falló: ' + error.message);
+    }
+}
+
+function displayMerkleResults(response) {
+    const resultsArea = document.getElementById('merkle-results');
+    resultsArea.style.display = 'block';
+
+    document.getElementById('merkle-original-data').textContent = response.originalData.join(', ');
+    document.getElementById('merkle-root').textContent = response.merkleRoot;
+    document.getElementById('merkle-leaves-count').textContent = response.leavesCount;
+    document.getElementById('merkle-height').textContent = response.treeHeight;
+
+    // Mostrar visualización del árbol
+    const treeVisual = document.getElementById('merkle-tree-diagram');
+    treeVisual.textContent = response.treeVisualization || 'Visualización no disponible.';
+
+    // Auto-fill verification field
+    if (response.originalData.length > 0) {
+        document.getElementById('merkle-verify-data').value = response.originalData[0];
+        document.getElementById('merkle-proof').value = response.sampleProof || '';
+    }
+
+    if (response.steps && response.steps.length > 0) {
+        const stepsContainer = document.getElementById('merkle-steps');
+        const stepsList = document.getElementById('merkle-steps-list');
+
+        stepsList.innerHTML = '';
+        response.steps.forEach(step => {
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'step-item';
+            stepDiv.textContent = 'Paso ' + step.step + ': ' + step.operation;
+            stepsList.appendChild(stepDiv);
+        });
+
+        stepsContainer.style.display = 'block';
+    }
+
+    resultsArea.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function verifyMerkleProof() {
+    const data = document.getElementById('merkle-verify-data').value;
+    const proof = document.getElementById('merkle-proof').value;
+
+    if (!data.trim() || !proof.trim()) {
+        alert('Por favor ingrese tanto el dato como el proof para verificar.');
+        return;
+    }
+
+    const proofArray = proof.split(',').map(item => item.trim()).filter(item => item.length > 0);
+
+    try {
+        const response = await makeAPIRequest('/hash/merkle-verify', {
+            data: data,
+            proof: proofArray
+        });
+
+        if (response.success) {
+            displayMerkleVerifyResults(response);
+        } else {
+            alert('Verificación de Merkle Proof falló: ' + (response.error || 'Error desconocido'));
+        }
+    } catch (error) {
+        alert('Verificación de Merkle Proof falló: ' + error.message);
+    }
+}
+
+function displayMerkleVerifyResults(response) {
+    const resultsArea = document.getElementById('merkle-verify-results');
+    resultsArea.style.display = 'block';
+
+    document.getElementById('merkle-verification-status').textContent = response.valid ? 'VÁLIDO' : 'INVÁLIDO';
+    document.getElementById('merkle-verification-status').style.color = response.valid ? '#28a745' : '#dc3545';
+    document.getElementById('merkle-verified-data').textContent = response.data;
+    document.getElementById('merkle-proof-valid').textContent = response.valid ? 'Sí' : 'No';
+
+    resultsArea.scrollIntoView({ behavior: 'smooth' });
+}
+
+function showHashLearnContent() {
+    const learnContent = `FUNCIONES HASH CRIPTOGRÁFICAS
+
+SHA-256 (Secure Hash Algorithm 256):
+- Función hash criptográfica de 256 bits.
+- Parte de la familia SHA-2 desarrollada por NSA.
+- Determinística: mismo input = mismo output.
+- Avalancha: pequeño cambio = hash completamente diferente.
+- Resistente a colisiones y preimágenes.
+
+MERKLE TREE (ÁRBOL DE MERKLE):
+- Estructura de datos tipo árbol binario.
+- Cada hoja contiene hash de un bloque de datos.
+- Cada nodo interno contiene hash de sus hijos.
+- Permite verificación eficiente de grandes conjuntos de datos.
+
+APLICACIONES:
+- Bitcoin y otras criptomonedas.
+- Sistemas de archivos distribuidos.
+- Verificación de integridad en bases de datos.
+- Protocolos de consenso blockchain.
+
+VENTAJAS DE MERKLE TREES:
+- Verificación O(log n) en lugar de O(n).
+- Detección eficiente de cambios.
+- Sincronización rápida entre nodos.
+- Pruebas criptográficas compactas.`;
+
+    alert(learnContent);
 }
 
 function displayRSAKeysResults(response) {

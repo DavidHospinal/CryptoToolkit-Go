@@ -119,6 +119,35 @@ type RSAVerifyResponse struct {
 	Steps   []Step `json:"steps,omitempty"`
 }
 
+// Tipo Merkle
+type MerkleRequest struct {
+	Data    []string `json:"data"`
+	Explain bool     `json:"explain,omitempty"`
+}
+
+type MerkleResponse struct {
+	Success           bool     `json:"success"`
+	OriginalData      []string `json:"originalData"`
+	MerkleRoot        string   `json:"merkleRoot"`
+	LeavesCount       int      `json:"leavesCount"`
+	TreeHeight        int      `json:"treeHeight"`
+	TreeVisualization string   `json:"treeVisualization"`
+	SampleProof       string   `json:"sampleProof,omitempty"`
+	Steps             []Step   `json:"steps,omitempty"`
+}
+
+type MerkleVerifyRequest struct {
+	Data  string   `json:"data"`
+	Proof []string `json:"proof"`
+}
+
+type MerkleVerifyResponse struct {
+	Success bool   `json:"success"`
+	Data    string `json:"data"`
+	Valid   bool   `json:"valid"`
+}
+
+// EndPoints
 func setupRoutes(r *gin.Engine) {
 	api := r.Group("/api/v1")
 
@@ -148,10 +177,12 @@ func setupRoutes(r *gin.Engine) {
 		rsa.POST("/sign", handleRSASign)
 		rsa.POST("/verify", handleRSAVerify)
 	}
-
+	//Endpoint Hash Functions
 	hashGroup := api.Group("/hash")
 	{
 		hashGroup.POST("/sha256", handleSHA256)
+		hashGroup.POST("/merkle", handleMerkleTree)
+		hashGroup.POST("/merkle-verify", handleMerkleVerify)
 	}
 
 }
@@ -252,10 +283,24 @@ func handleSHA256(c *gin.Context) {
 
 	result := hash.SimpleHash(req.Input, req.Explain)
 
+	var steps []Step
+	if req.Explain {
+		steps = []Step{
+			{StepNumber: 1, Description: "Preprocesamiento", Operation: "Agregar bit '1' seguido de ceros hasta completar 448 bits mod 512."},
+			{StepNumber: 2, Description: "Longitud del mensaje", Operation: "Agregar longitud original como entero de 64 bits."},
+			{StepNumber: 3, Description: "Inicialización", Operation: "Establecer 8 valores hash iniciales (constantes fraccionarias)."},
+			{StepNumber: 4, Description: "Procesamiento por bloques", Operation: "Procesar mensaje en bloques de 512 bits."},
+			{StepNumber: 5, Description: "Expansión del mensaje", Operation: "Expandir cada bloque de 16 a 64 palabras de 32 bits."},
+			{StepNumber: 6, Description: "Compresión principal", Operation: "80 rondas de operaciones lógicas con constantes K."},
+			{StepNumber: 7, Description: "Resultado final", Operation: "Concatenar 8 valores hash finales en 256 bits."},
+		}
+	}
+
 	response := HashResponse{
 		Success: true,
 		Input:   req.Input,
 		Hash:    fmt.Sprintf("%x", result),
+		Steps:   steps,
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -412,6 +457,106 @@ func generateMockModulus(keySize int) string {
 	default:
 		return "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"
 	}
+}
+
+// Simulación Hash
+func handleMerkleTree(c *gin.Context) {
+	var req MerkleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(req.Data) < 2 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Se necesitan al menos 2 elementos"})
+		return
+	}
+
+	// Simular construcción de árbol de Merkle
+	var steps []Step
+	if req.Explain {
+		steps = []Step{
+			{StepNumber: 1, Description: "Hash de hojas", Operation: "Calcular SHA-256 de cada elemento de datos."},
+			{StepNumber: 2, Description: "Emparejamiento", Operation: "Agrupar hashes en pares para el siguiente nivel."},
+			{StepNumber: 3, Description: "Hash de nodos", Operation: "Calcular hash de cada par concatenado."},
+			{StepNumber: 4, Description: "Repetir proceso", Operation: "Continuar hasta obtener un solo hash raíz."},
+			{StepNumber: 5, Description: "Raíz de Merkle", Operation: "El hash final es la raíz del árbol."},
+		}
+	}
+
+	// Calcular altura del árbol
+	treeHeight := calculateTreeHeight(len(req.Data))
+
+	// Generar visualización simple
+	visualization := generateTreeVisualization(req.Data)
+
+	response := MerkleResponse{
+		Success:           true,
+		OriginalData:      req.Data,
+		MerkleRoot:        "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456",
+		LeavesCount:       len(req.Data),
+		TreeHeight:        treeHeight,
+		TreeVisualization: visualization,
+		SampleProof:       "b2c3d4e5f6789012,c3d4e5f6789012ab",
+		Steps:             steps,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func handleMerkleVerify(c *gin.Context) {
+	var req MerkleVerifyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Simulación simple: válido si proof no está vacío
+	isValid := len(req.Proof) > 0 && req.Data != ""
+
+	response := MerkleVerifyResponse{
+		Success: true,
+		Data:    req.Data,
+		Valid:   isValid,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func calculateTreeHeight(leaves int) int {
+	if leaves <= 1 {
+		return 0
+	}
+	height := 0
+	for leaves > 1 {
+		leaves = (leaves + 1) / 2
+		height++
+	}
+	return height
+}
+
+func generateTreeVisualization(data []string) string {
+	if len(data) == 0 {
+		return "Árbol vacío"
+	}
+
+	visualization := "ÁRBOL DE MERKLE:\n\n"
+	visualization += "                    [RAÍZ]\n"
+	visualization += "                   /       \\\n"
+	visualization += "              [NODO1]     [NODO2]\n"
+	visualization += "             /      \\    /      \\\n"
+
+	for i, item := range data {
+		if i < 4 {
+			visualization += fmt.Sprintf("        [%s]", item[:min(8, len(item))])
+			if i < 3 {
+				visualization += " "
+			}
+		}
+	}
+
+	visualization += "\n\nNota: Visualización simplificada para fines educativos."
+	return visualization
 }
 
 func main() {
