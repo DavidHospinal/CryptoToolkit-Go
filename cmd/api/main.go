@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/DavidHospinal/CryptoToolkit-Go/internal/config"
 	"github.com/DavidHospinal/CryptoToolkit-Go/pkg/crypto/hash"
@@ -147,6 +149,38 @@ type MerkleVerifyResponse struct {
 	Valid   bool   `json:"valid"`
 }
 
+// Tipo Pow
+type PowMineRequest struct {
+	BlockData    string `json:"blockData"`
+	PreviousHash string `json:"previousHash"`
+	Difficulty   int    `json:"difficulty"`
+	Explain      bool   `json:"explain,omitempty"`
+}
+
+type PowMineResponse struct {
+	Success          bool   `json:"success"`
+	BlockData        string `json:"blockData"`
+	PreviousHash     string `json:"previousHash"`
+	Nonce            int    `json:"nonce"`
+	BlockHash        string `json:"blockHash"`
+	Difficulty       int    `json:"difficulty"`
+	ExpectedAttempts int    `json:"expectedAttempts"`
+	Steps            []Step `json:"steps,omitempty"`
+}
+
+type PowDifficultyRequest struct {
+	TargetTime        int `json:"targetTime"`
+	ActualTime        int `json:"actualTime"`
+	CurrentDifficulty int `json:"currentDifficulty"`
+}
+
+type PowDifficultyResponse struct {
+	Success           bool    `json:"success"`
+	CurrentDifficulty int     `json:"currentDifficulty"`
+	NewDifficulty     int     `json:"newDifficulty"`
+	AdjustmentFactor  float64 `json:"adjustmentFactor"`
+}
+
 // EndPoints
 func setupRoutes(r *gin.Engine) {
 	api := r.Group("/api/v1")
@@ -183,6 +217,13 @@ func setupRoutes(r *gin.Engine) {
 		hashGroup.POST("/sha256", handleSHA256)
 		hashGroup.POST("/merkle", handleMerkleTree)
 		hashGroup.POST("/merkle-verify", handleMerkleVerify)
+	}
+
+	//Endpoint Pow
+	pow := api.Group("/pow")
+	{
+		pow.POST("/mine", handlePowMine)
+		pow.POST("/difficulty", handlePowDifficulty)
 	}
 
 }
@@ -559,7 +600,122 @@ func generateTreeVisualization(data []string) string {
 	return visualization
 }
 
+// Simulación Pow
+func handlePowMine(c *gin.Context) {
+	var req PowMineRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var steps []Step
+	if req.Explain {
+		steps = []Step{
+			{StepNumber: 1, Description: "Preparación", Operation: "Combinar datos del bloque, hash anterior y timestamp."},
+			{StepNumber: 2, Description: "Inicialización", Operation: "Comenzar con nonce = 0."},
+			{StepNumber: 3, Description: "Cálculo de hash", Operation: "Calcular SHA-256 de (datos + hash_anterior + nonce)."},
+			{StepNumber: 4, Description: "Verificación", Operation: "Comprobar si el hash tiene suficientes ceros iniciales."},
+			{StepNumber: 5, Description: "Iteración", Operation: "Si no es válido, incrementar nonce y repetir."},
+			{StepNumber: 6, Description: "Éxito", Operation: "Nonce encontrado, bloque válido creado."},
+		}
+	}
+
+	// Calcular intentos esperados basado en dificultad
+	expectedAttempts := calculateExpectedAttempts(req.Difficulty)
+
+	// Simular nonce encontrado
+	nonce := expectedAttempts + (rand.Intn(1000) - 500)
+
+	// Generar hash simulado con ceros requeridos
+	blockHash := generateHashWithDifficulty(req.Difficulty)
+
+	response := PowMineResponse{
+		Success:          true,
+		BlockData:        req.BlockData,
+		PreviousHash:     req.PreviousHash,
+		Nonce:            nonce,
+		BlockHash:        blockHash,
+		Difficulty:       req.Difficulty,
+		ExpectedAttempts: expectedAttempts,
+		Steps:            steps,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func handlePowDifficulty(c *gin.Context) {
+	var req PowDifficultyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Calcular factor de ajuste
+	adjustmentFactor := float64(req.TargetTime) / float64(req.ActualTime)
+
+	// Limitar ajustes extremos (Bitcoin usa factor máximo de 4)
+	if adjustmentFactor > 4.0 {
+		adjustmentFactor = 4.0
+	} else if adjustmentFactor < 0.25 {
+		adjustmentFactor = 0.25
+	}
+
+	// Calcular nueva dificultad
+	newDifficulty := req.CurrentDifficulty
+	if adjustmentFactor > 1.1 {
+		newDifficulty = min(req.CurrentDifficulty+1, 10) // Máximo 10 ceros
+	} else if adjustmentFactor < 0.9 {
+		newDifficulty = max(req.CurrentDifficulty-1, 1) // Mínimo 1 cero
+	}
+
+	response := PowDifficultyResponse{
+		Success:           true,
+		CurrentDifficulty: req.CurrentDifficulty,
+		NewDifficulty:     newDifficulty,
+		AdjustmentFactor:  adjustmentFactor,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func calculateExpectedAttempts(difficulty int) int {
+	// 2^(4*difficulty) intentos aproximados
+	attempts := 1
+	for i := 0; i < difficulty*4; i++ {
+		attempts *= 2
+	}
+	return attempts / 2 // Promedio
+}
+
+func generateHashWithDifficulty(difficulty int) string {
+	hash := ""
+
+	// Agregar ceros requeridos
+	for i := 0; i < difficulty; i++ {
+		hash += "0"
+	}
+
+	// Completar con caracteres hexadecimales aleatorios
+	hexChars := "0123456789abcdef"
+	for len(hash) < 64 {
+		hash += string(hexChars[rand.Intn(len(hexChars))])
+	}
+
+	return hash
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 func main() {
+
+	// Inicializar generador de números aleatorios
+	rand.Seed(time.Now().UnixNano())
+
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal("Failed to load config:", err)

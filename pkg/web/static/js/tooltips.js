@@ -52,8 +52,20 @@ class CryptoTooltips {
             },
             'pow': {
                 title: 'Proof of Work',
-                content: 'Sistema donde computadoras compiten resolviendo problemas matemáticos para validar transacciones.',
+                content: 'Prueba de Trabajo (PoW). Sistema donde computadoras compiten resolviendo problemas matemáticos para validar transacciones.',
                 example: '💡 Como un concurso donde el primero en resolver un rompecabezas gana el derecho a escribir en el libro.'
+            },
+
+            'pow-mine': {
+                title: 'Mine',
+                content: 'Minar - Proceso de encontrar un nonce válido que produzca un hash con la dificultad requerida.',
+                example: ''
+            },
+
+            'pow-difficulty': {
+                title: 'Difficulty++',
+                content: 'Ajustar Dificultad - Calcular nueva dificultad basada en tiempo objetivo vs tiempo actual.',
+                example: ''
             },
             'encrypt': {
                 title: 'Cifrar',
@@ -160,6 +172,8 @@ class CryptoTooltips {
         this.addTooltipByText('KeyGen', 'rsa-keygen');
         this.addTooltipByText('Sign', 'rsa-sign');
         this.addTooltipByText('Verify', 'rsa-verify');
+        this.addTooltipByText('Mine', 'pow-mine');
+        this.addTooltipByText('Difficulty++', 'pow-difficulty');
 
 
         // Checkboxes y labels

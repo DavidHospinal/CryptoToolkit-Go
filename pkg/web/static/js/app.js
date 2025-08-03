@@ -45,7 +45,7 @@ const moduleConfig = {
         color: '#dc3545',
         sections: ['mining-simulation', 'difficulty-adjust'],
         defaultSection: 'mining-simulation',
-        disabled: true
+        disabled: false
     }
 };
 
@@ -214,6 +214,36 @@ function handleButtonAction(action, moduleKey) {
             showHashLearnContent();
             break;
 
+        //MANEJO DE ACCIONES POW
+        case 'pow-mine':
+            if (moduleKey === 'pow') {
+                showSection('pow-section');
+            }
+            break;
+
+        case 'execute-pow-mine':
+            if (currentModule === 'pow') {
+                startMining();
+            }
+            break;
+
+        case 'pow-difficulty':
+            if (moduleKey === 'pow') {
+                showSection('pow-section');
+                scrollToElement('pow-target-time');
+            }
+            break;
+
+        case 'execute-pow-difficulty':
+            if (currentModule === 'pow') {
+                adjustDifficulty();
+            }
+            break;
+
+        case 'pow-learn':
+            showPowLearnContent();
+            break;
+
         default:
             console.log('Accion no reconocida:', action);
     }
@@ -296,7 +326,8 @@ function showModuleInterface(moduleKey) {
             'aes-encrypt': 'aes-section',
             'rsa-keygen': 'rsa-section',
             'sha256-hash': 'sha256-section',
-            'merkle-trees': 'merkle-section'
+            'merkle-trees': 'merkle-section',
+            'mining-simulation': 'pow-section'
         };
         sectionElement = document.getElementById(sectionMap[targetSection]);
     }
@@ -981,6 +1012,213 @@ APLICACIONES:
 - Cifrado de archivos y discos.
 - Conexiones VPN.
 - Aplicaciones de mensajería segura.`;
+
+    alert(learnContent);
+}
+
+// Proof of Work functions
+let miningInterval = null;
+let miningStartTime = null;
+let miningAttempts = 0;
+
+async function startMining() {
+    const blockData = document.getElementById('pow-block-data').value;
+    const previousHash = document.getElementById('pow-previous-hash').value;
+    const difficulty = parseInt(document.getElementById('pow-difficulty').value);
+    const explain = document.getElementById('pow-explain').checked;
+
+    if (!blockData.trim() || !previousHash.trim()) {
+        alert('Por favor complete todos los campos requeridos.');
+        return;
+    }
+
+    // Mostrar estado de minado
+    const statusArea = document.getElementById('pow-mining-status');
+    statusArea.style.display = 'block';
+
+    // Ocultar resultados anteriores
+    document.getElementById('pow-results').style.display = 'none';
+
+    // Configurar botones
+    document.querySelector('[data-action="execute-pow-mine"]').style.display = 'none';
+    document.getElementById('pow-stop-btn').style.display = 'inline-block';
+
+    try {
+        const response = await makeAPIRequest('/pow/mine', {
+            blockData: blockData,
+            previousHash: previousHash,
+            difficulty: difficulty,
+            explain: explain
+        });
+
+        if (response.success) {
+            simulateMining(response);
+        } else {
+            alert('Inicio de minado falló: ' + (response.error || 'Error desconocido'));
+            resetMiningUI();
+        }
+    } catch (error) {
+        alert('Inicio de minado falló: ' + error.message);
+        resetMiningUI();
+    }
+}
+
+function simulateMining(response) {
+    miningStartTime = Date.now();
+    miningAttempts = 0;
+
+    document.getElementById('pow-status').textContent = 'Minando...';
+
+    const targetAttempts = response.expectedAttempts || 1000;
+    const updateInterval = Math.max(1, Math.floor(targetAttempts / 100));
+
+    miningInterval = setInterval(() => {
+        miningAttempts += Math.floor(Math.random() * 10) + 1;
+
+        const elapsed = (Date.now() - miningStartTime) / 1000;
+        const hashRate = Math.floor(miningAttempts / elapsed);
+
+        document.getElementById('pow-attempts').textContent = miningAttempts.toLocaleString();
+        document.getElementById('pow-hashrate').textContent = hashRate.toLocaleString() + ' H/s';
+        document.getElementById('pow-time').textContent = elapsed.toFixed(1) + ' s';
+
+        // Simular encontrar el nonce
+        if (miningAttempts >= targetAttempts || elapsed > 30) {
+            clearInterval(miningInterval);
+            miningInterval = null;
+
+            document.getElementById('pow-status').textContent = 'Bloque encontrado!';
+
+            setTimeout(() => {
+                displayPowResults(response, miningAttempts, elapsed);
+                resetMiningUI();
+            }, 1000);
+        }
+    }, 100);
+}
+
+function stopMining() {
+    if (miningInterval) {
+        clearInterval(miningInterval);
+        miningInterval = null;
+    }
+
+    document.getElementById('pow-status').textContent = 'Minado detenido por el usuario.';
+    resetMiningUI();
+}
+
+function resetMiningUI() {
+    document.querySelector('[data-action="execute-pow-mine"]').style.display = 'inline-block';
+    document.getElementById('pow-stop-btn').style.display = 'none';
+}
+
+function displayPowResults(response, attempts, timeElapsed) {
+    const resultsArea = document.getElementById('pow-results');
+    resultsArea.style.display = 'block';
+
+    document.getElementById('pow-mined-data').textContent = response.blockData;
+    document.getElementById('pow-mined-prev-hash').textContent = response.previousHash;
+    document.getElementById('pow-nonce').textContent = response.nonce;
+    document.getElementById('pow-block-hash').textContent = response.blockHash;
+    document.getElementById('pow-final-difficulty').textContent = response.difficulty + ' ceros iniciales';
+    document.getElementById('pow-total-attempts').textContent = attempts.toLocaleString();
+    document.getElementById('pow-total-time').textContent = timeElapsed.toFixed(2) + ' segundos';
+
+    if (response.steps && response.steps.length > 0) {
+        const stepsContainer = document.getElementById('pow-steps');
+        const stepsList = document.getElementById('pow-steps-list');
+
+        stepsList.innerHTML = '';
+        response.steps.forEach(step => {
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'step-item';
+            stepDiv.textContent = 'Paso ' + step.step + ': ' + step.operation;
+            stepsList.appendChild(stepDiv);
+        });
+
+        stepsContainer.style.display = 'block';
+    }
+
+    resultsArea.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function adjustDifficulty() {
+    const targetTime = parseInt(document.getElementById('pow-target-time').value);
+    const actualTime = parseInt(document.getElementById('pow-actual-time').value);
+
+    if (targetTime <= 0 || actualTime <= 0) {
+        alert('Por favor ingrese tiempos válidos mayores a cero.');
+        return;
+    }
+
+    try {
+        const response = await makeAPIRequest('/pow/difficulty', {
+            targetTime: targetTime,
+            actualTime: actualTime,
+            currentDifficulty: parseInt(document.getElementById('pow-difficulty').value)
+        });
+
+        if (response.success) {
+            displayDifficultyResults(response);
+        } else {
+            alert('Cálculo de dificultad falló: ' + (response.error || 'Error desconocido'));
+        }
+    } catch (error) {
+        alert('Cálculo de dificultad falló: ' + error.message);
+    }
+}
+
+function displayDifficultyResults(response) {
+    const resultsArea = document.getElementById('pow-difficulty-results');
+    resultsArea.style.display = 'block';
+
+    document.getElementById('pow-current-difficulty').textContent = response.currentDifficulty + ' ceros';
+    document.getElementById('pow-new-difficulty').textContent = response.newDifficulty + ' ceros';
+    document.getElementById('pow-adjustment-factor').textContent = 'x' + response.adjustmentFactor.toFixed(4);
+
+    const change = response.newDifficulty - response.currentDifficulty;
+    const changeText = change > 0 ? '+' + change + ' (Incremento)' : change + ' (Decremento)';
+    const changeColor = change > 0 ? '#dc3545' : '#28a745';
+
+    document.getElementById('pow-difficulty-change').textContent = changeText;
+    document.getElementById('pow-difficulty-change').style.color = changeColor;
+
+    // Actualizar selector de dificultad
+    document.getElementById('pow-difficulty').value = response.newDifficulty;
+
+    resultsArea.scrollIntoView({ behavior: 'smooth' });
+}
+
+function showPowLearnContent() {
+    const learnContent = `PROOF OF WORK (PRUEBA DE TRABAJO)
+
+CONCEPTO FUNDAMENTAL:
+- Algoritmo de consenso utilizado en Bitcoin.
+- Requiere esfuerzo computacional para validar bloques.
+- Los mineros compiten para resolver un puzzle criptográfico.
+- El primero en resolver el puzzle gana la recompensa.
+
+PROCESO DE MINADO:
+- Recopilar transacciones pendientes.
+- Calcular hash del bloque anterior.
+- Encontrar un nonce que produzca un hash con ceros iniciales.
+- Más ceros requeridos = mayor dificultad.
+
+AJUSTE DE DIFICULTAD:
+- Bitcoin ajusta dificultad cada 2016 bloques.
+- Objetivo: mantener 10 minutos por bloque.
+- Si los bloques son muy rápidos → aumenta dificultad.
+- Si los bloques son muy lentos → disminuye dificultad.
+
+SEGURIDAD:
+- Alterar histórico requiere rehacer todo el trabajo.
+- Costo computacional hace ataques impracticables.
+- Red descentralizada valida cada bloque.
+
+DESVENTAJAS:
+- Alto consumo energético.
+- Escalabilidad limitada.
+- Centralización en pools de minado.`;
 
     alert(learnContent);
 }
