@@ -42,9 +42,10 @@ class CryptoTooltips {
             },
             'encrypt': {
                 title: 'Cifrar',
-                content: 'Convertir texto normal en código secreto que solo puede ser leído con la clave correcta.',
+                content: 'Advanced Encryption Standard (AES) - Estándar de cifrado simétrico más utilizado mundialmente. Convertir texto normal en código secreto que solo puede ser leído con la clave correcta.',
                 example: '💡 "mensaje secreto" → "x9k2$mz8@p1w5n"'
             },
+
             'break': {
                 title: 'Vulnerabilidad',
                 content: 'Demostración de cómo los errores en criptografía pueden comprometer la seguridad.',

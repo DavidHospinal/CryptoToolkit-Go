@@ -61,6 +61,23 @@ type KeyReuseResponse struct {
 	Revealed  string `json:"revealed"`
 }
 
+type AESRequest struct {
+	Message string `json:"message"`
+	Key     string `json:"key"`
+	Mode    string `json:"mode"`
+	Explain bool   `json:"explain,omitempty"`
+}
+
+type AESResponse struct {
+	Success    bool   `json:"success"`
+	Message    string `json:"message"`
+	Key        string `json:"key"`
+	Mode       string `json:"mode"`
+	Ciphertext string `json:"ciphertext"`
+	IV         string `json:"iv,omitempty"`
+	Steps      []Step `json:"steps,omitempty"`
+}
+
 func setupRoutes(r *gin.Engine) {
 	api := r.Group("/api/v1")
 
@@ -70,11 +87,17 @@ func setupRoutes(r *gin.Engine) {
 			"message": "CryptoToolkit-Go API is running",
 		})
 	})
-
+	//ENDPOINT OTP
 	otp := api.Group("/otp")
 	{
 		otp.POST("/encrypt", handleOTPEncrypt)
 		otp.POST("/demo-break", handleOTPDemoBreak)
+	}
+
+	//ENDPOINT AES
+	aes := api.Group("/aes")
+	{
+		aes.POST("/encrypt", handleAESEncrypt)
 	}
 
 	hashGroup := api.Group("/hash")
@@ -193,6 +216,48 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func handleAESEncrypt(c *gin.Context) {
+	var req AESRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Simulación de pasos de AES para demostración educativa
+	var steps []Step
+	if req.Explain {
+		steps = []Step{
+			{StepNumber: 1, Description: "Validación de clave", Operation: "Verificar longitud de clave de 256 bits"},
+			{StepNumber: 2, Description: "Generación de IV", Operation: "Crear vector de inicialización aleatorio"},
+			{StepNumber: 3, Description: "Expansión de clave", Operation: "Generar claves de ronda desde clave maestra"},
+			{StepNumber: 4, Description: "Ronda inicial", Operation: "AddRoundKey - XOR con primera clave de ronda"},
+			{StepNumber: 5, Description: "Rondas principales", Operation: "13 rondas de SubBytes, ShiftRows, MixColumns, AddRoundKey"},
+			{StepNumber: 6, Description: "Ronda final", Operation: "SubBytes, ShiftRows, AddRoundKey (sin MixColumns)"},
+			{StepNumber: 7, Description: "Resultado", Operation: "Texto cifrado en hexadecimal"},
+		}
+	}
+
+	// Simulación básica de cifrado
+	ciphertext := "f8e2a1b4c7d3e9f6a2b5c8d1e4f7a0b3c6d9e2f5a8b1c4d7e0f3a6b9c2d5e8f1"
+	if req.Mode == "ECB" {
+		ciphertext = "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"
+	} else if req.Mode == "CTR" {
+		ciphertext = "1a2b3c4d5e6f789a012b345c678d901e234f567a890b123c456d789e012f345a"
+	}
+
+	response := AESResponse{
+		Success:    true,
+		Message:    req.Message,
+		Key:        "****masked****",
+		Mode:       req.Mode,
+		Ciphertext: ciphertext,
+		IV:         "1234567890abcdef",
+		Steps:      steps,
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func main() {

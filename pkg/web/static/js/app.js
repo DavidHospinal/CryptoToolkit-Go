@@ -25,14 +25,14 @@ const moduleConfig = {
         color: '#007bff',
         sections: ['aes-encrypt', 'aes-modes'],
         defaultSection: 'aes-encrypt',
-        disabled: true
+        disabled: false
     },
     'rsa': {
         name: 'RSA Cryptography',
         color: '#fd7e14',
         sections: ['rsa-keygen', 'rsa-sign', 'rsa-verify'],
         defaultSection: 'rsa-keygen',
-        disabled: true
+        disabled: false
     },
     'hash': {
         name: 'Hash Functions',
@@ -108,13 +108,17 @@ function handleButtonAction(action, moduleKey) {
 
         case 'break':
             if (moduleKey === 'otp') {
-                showSection('otp-section');
-                alert('Demo: Key reuse vulnerability demonstration');
+                showSection('otp-break-section');
+                //alert('Demo: Key reuse vulnerability demonstration');//
             }
             break;
 
         case 'learn':
-            alert('Learning module: Conceptos fundamentales de criptografia');
+            if (moduleKey === 'otp') {
+                showOTPLearnContent();
+            } else {
+                alert(' Learning module: Conceptos fundamentales de criptografía');
+            }
             break;
 
         case 'sha256':
@@ -127,6 +131,26 @@ function handleButtonAction(action, moduleKey) {
             if (currentModule === 'hash') {
                 hashSHA256();
             }
+            break;
+    //MANEJO DE ACCIONES
+        case 'aes-encrypt':
+            if (moduleKey === 'aes') {
+                showSection('aes-section');
+            }
+            break;
+
+        case 'execute-aes-encrypt':
+            if (currentModule === 'aes') {
+                encryptAES();
+            }
+            break;
+
+        case 'aes-modes':
+            alert('MODOS DE OPERACIÓN AES:\n\nCBC (Cipher Block Chaining):\n• Cifrado en cadena de bloques.\n• Seguro, requiere Vector de Inicialización (IV).\n• Uso: Cifrado de archivos y comunicaciones seguras.\n\nECB (Electronic Codebook):\n• Libro de códigos electrónico.\n• Simple pero inseguro (patrones visibles).\n• Uso: Solo para datos muy pequeños o claves.\n\nCTR (Counter Mode):\n• Modo contador, comportamiento de cifrado de flujo.\n• Permite paralelización y acceso aleatorio.\n• Uso: Cifrado de alta velocidad y streaming.');
+            break;
+
+        case 'aes-learn':
+            showAESLearnContent();
             break;
 
         default:
@@ -208,7 +232,8 @@ function showModuleInterface(moduleKey) {
     if (!sectionElement) {
         const sectionMap = {
             'otp-encrypt': 'otp-section',
-            'sha256-hash': 'sha256-section'
+            'sha256-hash': 'sha256-section',
+            'aes-encrypt': 'aes-section'
         };
         sectionElement = document.getElementById(sectionMap[targetSection]);
     }
@@ -449,6 +474,128 @@ function displayKeyReuseResults(response) {
     document.getElementById('break-revealed').textContent = response.revealed || 'Information leaked!';
 
     resultsArea.scrollIntoView({ behavior: 'smooth' });
+}
+
+function showOTPLearnContent() {
+    // Crear ventana modal o sección con contenido educativo
+    const learnContent = `
+🎓 ONE-TIME PAD (OTP) - SEGURIDAD PERFECTA
+
+📚 CONCEPTOS CLAVE:
+- Clave tan larga como el mensaje.
+- Clave completamente aleatoria.
+- Clave usada una sola vez.
+- Operación XOR bit a bit.
+
+🔒 ¿POR QUÉ ES SEGURO?
+- Imposible de romper matemáticamente.
+- Cada bit tiene 50% probabilidad de ser 0 o 1.
+- Sin patrones detectables.
+
+⚠️ PROBLEMAS PRÁCTICOS:
+- Distribución segura de claves.
+- Almacenamiento de claves largas.
+- Reutilización accidental = vulnerabilidad.
+
+💡 APLICACIONES:
+- Comunicaciones militares de alta seguridad.
+- Líneas rojas diplomáticas.
+- Sistemas críticos de seguridad nacional.
+    `;
+
+    alert(learnContent);
+}
+
+
+// AES Encryption functions
+async function encryptAES() {
+    const message = document.getElementById('aes-message').value;
+    const key = document.getElementById('aes-key').value;
+    const mode = document.getElementById('aes-mode').value;
+    const explain = document.getElementById('aes-explain').checked;
+
+    if (!message.trim()) {
+        alert('Please enter a message to encrypt');
+        return;
+    }
+
+    if (key.length !== 32) {
+        alert('Key must be exactly 32 characters for AES-256');
+        return;
+    }
+
+    try {
+        const response = await makeAPIRequest('/aes/encrypt', {
+            message: message,
+            key: key,
+            mode: mode,
+            explain: explain
+        });
+
+        if (response.success) {
+            displayAESResults(response);
+        } else {
+            alert('AES encryption failed: ' + (response.error || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('AES encryption failed: ' + error.message);
+    }
+}
+
+function displayAESResults(response) {
+    const resultsArea = document.getElementById('aes-results');
+    resultsArea.style.display = 'block';
+
+    document.getElementById('aes-original').textContent = response.message;
+    document.getElementById('aes-used-key').textContent = response.key;
+    document.getElementById('aes-used-mode').textContent = response.mode;
+    document.getElementById('aes-ciphertext').textContent = response.ciphertext;
+    document.getElementById('aes-iv').textContent = response.iv || 'N/A';
+
+    if (response.steps && response.steps.length > 0) {
+        const stepsContainer = document.getElementById('aes-steps');
+        const stepsList = document.getElementById('aes-steps-list');
+
+        stepsList.innerHTML = '';
+        response.steps.forEach(step => {
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'step-item';
+            stepDiv.textContent = 'Step ' + step.step + ': ' + step.operation;
+            stepsList.appendChild(stepDiv);
+        });
+
+        stepsContainer.style.display = 'block';
+    }
+
+    resultsArea.scrollIntoView({ behavior: 'smooth' });
+}
+
+function showAESLearnContent() {
+    const learnContent = `ESTÁNDAR DE CIFRADO AVANZADO (AES)
+
+CARACTERÍSTICAS PRINCIPALES:
+- Cifrado por bloques de 128 bits.
+- Tamaños de clave: 128, 192 o 256 bits.
+- Estándar de la industria desde 2001.
+- Usado globalmente en comunicaciones seguras.
+
+MODOS DE CIFRADO:
+- CBC: Cifrado en cadena de bloques - seguro con IV.
+- ECB: Libro de códigos electrónico - simple pero inseguro.
+- CTR: Modo contador - comportamiento de cifrado de flujo.
+
+SEGURIDAD:
+- Resistente a ataques cuánticos para fines prácticos.
+- No se conocen ataques prácticos exitosos.
+- Utilizado por gobiernos y corporaciones a nivel mundial.
+
+APLICACIONES:
+- Seguridad web HTTPS/TLS.
+- Cifrado de archivos y discos.
+- Conexiones VPN.
+- Aplicaciones de mensajería segura.`;
+
+    alert(learnContent);
 }
 
 console.log('TEST FINAL - app.js completado');
