@@ -82,11 +82,54 @@ body {
     background: #10b981;
 }
 
+/* Indicador API intermitente */
 .status-indicator.online {
-    background: #10b981;
-    box-shadow: 0 0 10px #10b981;
+    background-color: #28a745;
+    border-radius: 50%;
+    width: 8px;
+    height: 8px;
+    display: inline-block;
+    margin-right: 5px;
+    animation: pulse-green 2s infinite;
 }
 
+@keyframes pulse-green {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+        box-shadow: 0 0 0 8px rgba(40, 167, 69, 0);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+    }
+}
+
+.status-indicator.offline {
+    background-color: #dc3545;
+    animation: pulse-red 1s infinite;
+}
+
+@keyframes pulse-red {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* Texto API Online también intermitente */
+.api-status-text {
+    animation: fade-pulse 3s infinite;
+}
+
+@keyframes fade-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
 /* Main Content */
 .main-content {
     display: grid;

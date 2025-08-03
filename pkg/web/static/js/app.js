@@ -62,10 +62,155 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeModuleNavigation();
     initializeLearningPath();
     initializeButtonHandlers();
+    initializeHeaderNavigation(); // ✅ MOVER AQUÍ
+    initializeAPIStatusCheck();   // ✅ MOVER AQUÍ
     selectModule('otp');
 
-    console.log('INICIALIZACION COMPLETA');
+    console.log('INICIALIZACION COMPLETA'); // ✅ SOLO UNA VEZ
 });
+
+// NUEVA FUNCIÓN
+function initializeHeaderNavigation() {
+    const navButtons = document.querySelectorAll('.nav-btn');
+    navButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const section = this.dataset.section;
+            handleHeaderNavigation(section);
+        });
+    });
+}
+
+function handleHeaderNavigation(section) {
+    switch(section) {
+        case 'playground':
+            // Ya estamos en playground - no hacer nada
+            break;
+
+        case 'tutorials':
+            showTutorialsModal();
+            break;
+
+        case 'api-docs':
+            showAPIDocsModal();
+            break;
+
+        case 'cli-guide':
+            showCLIGuideModal();
+            break;
+    }
+}
+
+function showTutorialsModal() {
+    const content = `📚 TUTORIALES DISPONIBLES
+
+🔑 ONE-TIME PAD:
+- Implementación paso a paso
+- Casos de uso en criptografía militar
+- Análisis de vulnerabilidades
+
+🛡️ AES ENCRYPTION:
+- Configuración de modos CBC/ECB/CTR
+- Implementación en aplicaciones web
+- Best practices de seguridad
+
+🔐 RSA CRYPTOGRAPHY:
+- Generación segura de claves
+- Implementación de firmas digitales
+- Protocolos de intercambio de claves
+
+📊 HASH FUNCTIONS:
+- Construcción de árboles de Merkle
+- Implementación de blockchain simple
+- Verificación de integridad
+
+⛏️ PROOF OF WORK:
+- Simulación de minado Bitcoin
+- Algoritmos de ajuste de dificultad
+- Análisis de consumo energético`;
+
+    alert(content);
+}
+
+function showAPIDocsModal() {
+    const content = `📖 DOCUMENTACIÓN API
+
+BASE URL: http://localhost:8080/api/v1
+
+🔑 ENDPOINTS OTP:
+POST /otp/encrypt
+POST /otp/demo-break
+
+🛡️ ENDPOINTS AES:
+POST /aes/encrypt
+
+🔐 ENDPOINTS RSA:
+POST /rsa/keygen
+POST /rsa/sign
+POST /rsa/verify
+
+📊 ENDPOINTS HASH:
+POST /hash/sha256
+POST /hash/merkle
+POST /hash/merkle-verify
+
+⛏️ ENDPOINTS POW:
+POST /pow/mine
+POST /pow/difficulty
+
+Consulta ejemplos de uso en cada módulo del playground.`;
+
+    alert(content);
+}
+
+function showCLIGuideModal() {
+    const content = `💻 GUÍA CLI
+
+COMPILACIÓN:
+go build -o cryptotoolkit cmd/api/main.go
+
+EJECUCIÓN:
+./cryptotoolkit --help
+
+EJEMPLOS DE USO:
+./cryptotoolkit otp encrypt "Hello World"
+./cryptotoolkit aes encrypt --key="mykey" --data="secret"
+./cryptotoolkit rsa keygen --size=2048
+./cryptotoolkit hash sha256 "blockchain"
+./cryptotoolkit pow mine --difficulty=4
+
+OPCIONES GLOBALES:
+--verbose    Mostrar información detallada
+--output     Formato de salida (json, text)
+--help       Mostrar ayuda
+
+Nota: CLI en desarrollo - Actualmente solo disponible interfaz web.`;
+
+    alert(content);
+}
+// Verificar estado API periódicamente
+function initializeAPIStatusCheck() {
+    checkAPIStatus(); // Verificación inicial
+    setInterval(checkAPIStatus, 10000); // Cada 10 segundos
+}
+
+async function checkAPIStatus() {
+    const statusIndicator = document.querySelector('.status-indicator');
+    const statusText = document.querySelector('.api-status-text');
+
+    try {
+        const response = await fetch('/api/v1/health');
+        if (response.ok) {
+            statusIndicator.className = 'status-indicator online';
+            statusText.textContent = 'API Online';
+        } else {
+            statusIndicator.className = 'status-indicator offline';
+            statusText.textContent = 'API Error';
+        }
+    } catch (error) {
+        statusIndicator.className = 'status-indicator offline';
+        statusText.textContent = 'API Offline';
+    }
+}
 
 function initializeButtonHandlers() {
     console.log('Inicializando manejadores de botones...');
