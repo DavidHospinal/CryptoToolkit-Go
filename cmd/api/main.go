@@ -78,6 +78,47 @@ type AESResponse struct {
 	Steps      []Step `json:"steps,omitempty"`
 }
 
+// Tipos RSA
+type RSAKeyGenRequest struct {
+	KeySize int  `json:"keySize"`
+	Explain bool `json:"explain,omitempty"`
+}
+
+type RSAKeyGenResponse struct {
+	Success    bool   `json:"success"`
+	KeySize    int    `json:"keySize"`
+	PublicKey  string `json:"publicKey"`
+	PrivateKey string `json:"privateKey"`
+	Modulus    string `json:"modulus"`
+	Steps      []Step `json:"steps,omitempty"`
+}
+
+type RSASignRequest struct {
+	Message string `json:"message"`
+	Explain bool   `json:"explain,omitempty"`
+}
+
+type RSASignResponse struct {
+	Success     bool   `json:"success"`
+	Message     string `json:"message"`
+	MessageHash string `json:"messageHash"`
+	Signature   string `json:"signature"`
+	Steps       []Step `json:"steps,omitempty"`
+}
+
+type RSAVerifyRequest struct {
+	Message   string `json:"message"`
+	Signature string `json:"signature"`
+	Explain   bool   `json:"explain,omitempty"`
+}
+
+type RSAVerifyResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Valid   bool   `json:"valid"`
+	Steps   []Step `json:"steps,omitempty"`
+}
+
 func setupRoutes(r *gin.Engine) {
 	api := r.Group("/api/v1")
 
@@ -100,10 +141,19 @@ func setupRoutes(r *gin.Engine) {
 		aes.POST("/encrypt", handleAESEncrypt)
 	}
 
+	//ENDPOINT RSA
+	rsa := api.Group("/rsa")
+	{
+		rsa.POST("/keygen", handleRSAKeyGen)
+		rsa.POST("/sign", handleRSASign)
+		rsa.POST("/verify", handleRSAVerify)
+	}
+
 	hashGroup := api.Group("/hash")
 	{
 		hashGroup.POST("/sha256", handleSHA256)
 	}
+
 }
 
 func handleOTPEncrypt(c *gin.Context) {
@@ -258,6 +308,110 @@ func handleAESEncrypt(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+// Simulación RSA
+func handleRSAKeyGen(c *gin.Context) {
+	var req RSAKeyGenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var steps []Step
+	if req.Explain {
+		steps = []Step{
+			{StepNumber: 1, Description: "Selección de primos", Operation: "Generar dos números primos grandes p y q"},
+			{StepNumber: 2, Description: "Cálculo del módulo", Operation: "n = p × q"},
+			{StepNumber: 3, Description: "Función totiente", Operation: "φ(n) = (p-1) × (q-1)"},
+			{StepNumber: 4, Description: "Selección de exponente público", Operation: "Elegir e tal que gcd(e, φ(n)) = 1"},
+			{StepNumber: 5, Description: "Cálculo de exponente privado", Operation: "d = e⁻¹ mod φ(n)"},
+			{StepNumber: 6, Description: "Generación de claves", Operation: "Clave pública: (e, n), Clave privada: (d, n)"},
+		}
+	}
+
+	response := RSAKeyGenResponse{
+		Success:    true,
+		KeySize:    req.KeySize,
+		PublicKey:  "65537, " + generateMockModulus(req.KeySize),
+		PrivateKey: "****PRIVADA****",
+		Modulus:    generateMockModulus(req.KeySize),
+		Steps:      steps,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func handleRSASign(c *gin.Context) {
+	var req RSASignRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var steps []Step
+	if req.Explain {
+		steps = []Step{
+			{StepNumber: 1, Description: "Hash del mensaje", Operation: "Calcular SHA-256 del mensaje"},
+			{StepNumber: 2, Description: "Padding", Operation: "Aplicar esquema de padding PKCS#1"},
+			{StepNumber: 3, Description: "Firma", Operation: "s = (hash^d) mod n usando clave privada"},
+			{StepNumber: 4, Description: "Codificación", Operation: "Convertir firma a hexadecimal"},
+		}
+	}
+
+	response := RSASignResponse{
+		Success:     true,
+		Message:     req.Message,
+		MessageHash: "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
+		Signature:   "2d2d2d2d2d424547494e205253412050524956415445204b45592d2d2d2d2d",
+		Steps:       steps,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func handleRSAVerify(c *gin.Context) {
+	var req RSAVerifyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var steps []Step
+	if req.Explain {
+		steps = []Step{
+			{StepNumber: 1, Description: "Hash del mensaje", Operation: "Calcular SHA-256 del mensaje recibido"},
+			{StepNumber: 2, Description: "Descifrado de firma", Operation: "m = (s^e) mod n usando clave pública"},
+			{StepNumber: 3, Description: "Comparación", Operation: "Comparar hash calculado con hash descifrado"},
+			{StepNumber: 4, Description: "Resultado", Operation: "Determinar validez de la firma"},
+		}
+	}
+
+	// Simulación: firma válida si no está vacía
+	isValid := len(req.Signature) > 10
+
+	response := RSAVerifyResponse{
+		Success: true,
+		Message: req.Message,
+		Valid:   isValid,
+		Steps:   steps,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func generateMockModulus(keySize int) string {
+	// Generar módulo simulado basado en el tamaño de clave
+	switch keySize {
+	case 1024:
+		return "c7b5a2e4f8d3c9b1a6e2f5d8c4b7a3e6f9d2c5b8a1e4f7d0c3b6a9e2f5d8c1b4a7"
+	case 2048:
+		return "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456789012345678901234567890abcdef1234567890abcdef12345678901234567890abcdef1234567890abcdef123456"
+	case 4096:
+		return "f1e2d3c4b5a69788f1e2d3c4b5a69788f1e2d3c4b5a69788f1e2d3c4b5a69788f1e2d3c4b5a69788f1e2d3c4b5a69788f1e2d3c4b5a69788f1e2d3c4b5a69788f1e2d3c4b5a69788f1e2d3c4b5a69788f1e2d3c4b5a69788f1e2d3c4b5a69788"
+	default:
+		return "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"
+	}
 }
 
 func main() {

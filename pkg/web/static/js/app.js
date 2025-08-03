@@ -132,7 +132,7 @@ function handleButtonAction(action, moduleKey) {
                 hashSHA256();
             }
             break;
-    //MANEJO DE ACCIONES
+    //MANEJO DE ACCIONES AES
         case 'aes-encrypt':
             if (moduleKey === 'aes') {
                 showSection('aes-section');
@@ -151,6 +151,44 @@ function handleButtonAction(action, moduleKey) {
 
         case 'aes-learn':
             showAESLearnContent();
+            break;
+        //MANEJO DE ACCIONES RSA
+        case 'rsa-keygen':
+            if (moduleKey === 'rsa') {
+                showSection('rsa-section');
+            }
+            break;
+
+        case 'execute-rsa-keygen':
+            if (currentModule === 'rsa') {
+                generateRSAKeys();
+            }
+            break;
+
+        case 'rsa-sign':
+            if (moduleKey === 'rsa') {
+                showSection('rsa-section');
+                scrollToElement('rsa-message-sign');
+            }
+            break;
+
+        case 'execute-rsa-sign':
+            if (currentModule === 'rsa') {
+                signRSAMessage();
+            }
+            break;
+
+        case 'rsa-verify':
+            if (moduleKey === 'rsa') {
+                showSection('rsa-section');
+                scrollToElement('rsa-message-verify');
+            }
+            break;
+
+        case 'execute-rsa-verify':
+            if (currentModule === 'rsa') {
+                verifyRSASignature();
+            }
             break;
 
         default:
@@ -233,7 +271,8 @@ function showModuleInterface(moduleKey) {
         const sectionMap = {
             'otp-encrypt': 'otp-section',
             'sha256-hash': 'sha256-section',
-            'aes-encrypt': 'aes-section'
+            'aes-encrypt': 'aes-section',
+            'rsa-keygen': 'rsa-section'
         };
         sectionElement = document.getElementById(sectionMap[targetSection]);
     }
@@ -540,6 +579,171 @@ async function encryptAES() {
     } catch (error) {
         alert('AES encryption failed: ' + error.message);
     }
+}
+
+// RSA Cryptography functions
+async function generateRSAKeys() {
+    const keySize = document.getElementById('rsa-key-size').value;
+    const explain = document.getElementById('rsa-explain').checked;
+
+    try {
+        const response = await makeAPIRequest('/rsa/keygen', {
+            keySize: parseInt(keySize),
+            explain: explain
+        });
+
+        if (response.success) {
+            displayRSAKeysResults(response);
+        } else {
+            alert('Generación de claves RSA falló: ' + (response.error || 'Error desconocido'));
+        }
+    } catch (error) {
+        alert('Generación de claves RSA falló: ' + error.message);
+    }
+}
+
+function displayRSAKeysResults(response) {
+    const resultsArea = document.getElementById('rsa-keys-results');
+    resultsArea.style.display = 'block';
+
+    document.getElementById('rsa-key-size-result').textContent = response.keySize + ' bits';
+    document.getElementById('rsa-public-key').textContent = response.publicKey;
+    document.getElementById('rsa-private-key').textContent = response.privateKey;
+    document.getElementById('rsa-modulus').textContent = response.modulus;
+
+    if (response.steps && response.steps.length > 0) {
+        const stepsContainer = document.getElementById('rsa-keygen-steps');
+        const stepsList = document.getElementById('rsa-keygen-steps-list');
+
+        stepsList.innerHTML = '';
+        response.steps.forEach(step => {
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'step-item';
+            stepDiv.textContent = 'Paso ' + step.step + ': ' + step.operation;
+            stepsList.appendChild(stepDiv);
+        });
+
+        stepsContainer.style.display = 'block';
+    }
+
+    resultsArea.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function signRSAMessage() {
+    const message = document.getElementById('rsa-message-sign').value;
+    const explain = document.getElementById('rsa-sign-explain').checked;
+
+    if (!message.trim()) {
+        alert('Por favor ingrese un mensaje para firmar.');
+        return;
+    }
+
+    try {
+        const response = await makeAPIRequest('/rsa/sign', {
+            message: message,
+            explain: explain
+        });
+
+        if (response.success) {
+            displayRSASignResults(response);
+            // Auto-fill verification fields
+            document.getElementById('rsa-message-verify').value = message;
+            document.getElementById('rsa-signature-verify').value = response.signature;
+        } else {
+            alert('Firma RSA falló: ' + (response.error || 'Error desconocido'));
+        }
+    } catch (error) {
+        alert('Firma RSA falló: ' + error.message);
+    }
+}
+
+function displayRSASignResults(response) {
+    const resultsArea = document.getElementById('rsa-sign-results');
+    resultsArea.style.display = 'block';
+
+    document.getElementById('rsa-signed-message').textContent = response.message;
+    document.getElementById('rsa-message-hash').textContent = response.messageHash;
+    document.getElementById('rsa-signature').textContent = response.signature;
+
+    if (response.steps && response.steps.length > 0) {
+        const stepsContainer = document.getElementById('rsa-sign-steps');
+        const stepsList = document.getElementById('rsa-sign-steps-list');
+
+        stepsList.innerHTML = '';
+        response.steps.forEach(step => {
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'step-item';
+            stepDiv.textContent = 'Paso ' + step.step + ': ' + step.operation;
+            stepsList.appendChild(stepDiv);
+        });
+
+        stepsContainer.style.display = 'block';
+    }
+
+    resultsArea.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function verifyRSASignature() {
+    const message = document.getElementById('rsa-message-verify').value;
+    const signature = document.getElementById('rsa-signature-verify').value;
+    const explain = document.getElementById('rsa-verify-explain').checked;
+
+    if (!message.trim() || !signature.trim()) {
+        alert('Por favor ingrese tanto el mensaje como la firma para verificar.');
+        return;
+    }
+
+    try {
+        const response = await makeAPIRequest('/rsa/verify', {
+            message: message,
+            signature: signature,
+            explain: explain
+        });
+
+        if (response.success) {
+            displayRSAVerifyResults(response);
+        } else {
+            alert('Verificación RSA falló: ' + (response.error || 'Error desconocido'));
+        }
+    } catch (error) {
+        alert('Verificación RSA falló: ' + error.message);
+    }
+}
+
+function displayRSAVerifyResults(response) {
+    const resultsArea = document.getElementById('rsa-verify-results');
+    resultsArea.style.display = 'block';
+
+    document.getElementById('rsa-verification-status').textContent = response.valid ? 'VÁLIDA' : 'INVÁLIDA';
+    document.getElementById('rsa-verification-status').style.color = response.valid ? '#28a745' : '#dc3545';
+    document.getElementById('rsa-verified-message').textContent = response.message;
+    document.getElementById('rsa-integrity-status').textContent = response.valid ? 'Integridad confirmada' : 'Integridad comprometida';
+
+    if (response.steps && response.steps.length > 0) {
+        const stepsContainer = document.getElementById('rsa-verify-steps');
+        const stepsList = document.getElementById('rsa-verify-steps-list');
+
+        stepsList.innerHTML = '';
+        response.steps.forEach(step => {
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'step-item';
+            stepDiv.textContent = 'Paso ' + step.step + ': ' + step.operation;
+            stepsList.appendChild(stepDiv);
+        });
+
+        stepsContainer.style.display = 'block';
+    }
+
+    resultsArea.scrollIntoView({ behavior: 'smooth' });
+}
+
+function scrollToElement(elementId) {
+    setTimeout(() => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, 300);
 }
 
 function displayAESResults(response) {

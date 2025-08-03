@@ -22,8 +22,23 @@ class CryptoTooltips {
             },
             'rsa': {
                 title: 'RSA Cryptography',
-                content: 'Criptografía de clave pública. Tienes dos claves: una pública y una privada.',
+                content: 'Rivest-Shamir-Adleman (RSA). Criptografía de clave pública. Tienes dos claves: una pública y una privada.',
                 example: '💡 Como un buzón público donde todos pueden depositar cartas, pero solo tú tienes la llave.'
+            },
+            'rsa-keygen': {
+                title: 'KeyGen',
+                content: 'Generación de claves - Crear par de claves pública y privada RSA.',
+                example: ''
+            },
+            'rsa-sign': {
+                title: 'Sign',
+                content: 'Firma digital - Crear firma criptográfica para autenticar mensajes.',
+                example: ''
+            },
+            'rsa-verify': {
+                title: 'Verify',
+                content: 'Verificación - Comprobar la autenticidad e integridad de firmas digitales.',
+                example: ''
             },
             'sha256': {
                 title: 'SHA-256 Hash',
@@ -142,6 +157,10 @@ class CryptoTooltips {
         this.addTooltipByText('Encrypt', 'encrypt');
         this.addTooltipByText('Break', 'break');
         this.addTooltipByText('SHA-256', 'sha256');
+        this.addTooltipByText('KeyGen', 'rsa-keygen');
+        this.addTooltipByText('Sign', 'rsa-sign');
+        this.addTooltipByText('Verify', 'rsa-verify');
+
 
         // Checkboxes y labels
         this.addTooltipByText('Show step-by-step explanation', 'step-by-step');
