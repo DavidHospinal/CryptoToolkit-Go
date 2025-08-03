@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"log"
 	"math/rand"
@@ -9,10 +10,15 @@ import (
 	"time"
 
 	"github.com/DavidHospinal/CryptoToolkit-Go/internal/config"
+	"github.com/DavidHospinal/CryptoToolkit-Go/pkg/crypto/asymmetric"
 	"github.com/DavidHospinal/CryptoToolkit-Go/pkg/crypto/hash"
 	"github.com/DavidHospinal/CryptoToolkit-Go/pkg/crypto/symmetric"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+)
+
+var (
+	currentRSAKeyPair *asymmetric.RSAKeyPair
 )
 
 type OTPRequest struct {
@@ -361,42 +367,55 @@ func handleAESEncrypt(c *gin.Context) {
 		return
 	}
 
-	// Simulación de pasos de AES para demostración educativa
-	var steps []Step
-	if req.Explain {
-		steps = []Step{
-			{StepNumber: 1, Description: "Validación de clave", Operation: "Verificar longitud de clave de 256 bits"},
-			{StepNumber: 2, Description: "Generación de IV", Operation: "Crear vector de inicialización aleatorio"},
-			{StepNumber: 3, Description: "Expansión de clave", Operation: "Generar claves de ronda desde clave maestra"},
-			{StepNumber: 4, Description: "Ronda inicial", Operation: "AddRoundKey - XOR con primera clave de ronda"},
-			{StepNumber: 5, Description: "Rondas principales", Operation: "13 rondas de SubBytes, ShiftRows, MixColumns, AddRoundKey"},
-			{StepNumber: 6, Description: "Ronda final", Operation: "SubBytes, ShiftRows, AddRoundKey (sin MixColumns)"},
-			{StepNumber: 7, Description: "Resultado", Operation: "Texto cifrado en hexadecimal"},
-		}
+	// Validar longitud de clave
+	if len(req.Key) != 32 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Key must be exactly 32 characters for AES-256"})
+		return
 	}
 
-	// Simulación básica de cifrado
-	ciphertext := "f8e2a1b4c7d3e9f6a2b5c8d1e4f7a0b3c6d9e2f5a8b1c4d7e0f3a6b9c2d5e8f1"
-	if req.Mode == "ECB" {
-		ciphertext = "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"
-	} else if req.Mode == "CTR" {
-		ciphertext = "1a2b3c4d5e6f789a012b345c678d901e234f567a890b123c456d789e012f345a"
+	// Crear instancia AES
+	aesImpl := symmetric.NewAES(req.Explain)
+
+	// Convertir clave de string a bytes
+	keyBytes := []byte(req.Key)
+
+	// Cifrar mensaje
+	ciphertext, iv, steps, err := aesImpl.Encrypt([]byte(req.Message), keyBytes, req.Mode)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convertir steps a formato API
+	var apiSteps []Step
+	for _, step := range steps {
+		apiSteps = append(apiSteps, Step{
+			StepNumber:  step.Step,
+			Description: step.Description,
+			Operation:   step.Operation,
+		})
+	}
+
+	// Preparar IV para respuesta
+	ivHex := ""
+	if iv != nil {
+		ivHex = hex.EncodeToString(iv)
 	}
 
 	response := AESResponse{
 		Success:    true,
 		Message:    req.Message,
-		Key:        "****masked****",
+		Key:        "****masked****", // No mostrar clave real
 		Mode:       req.Mode,
-		Ciphertext: ciphertext,
-		IV:         "1234567890abcdef",
-		Steps:      steps,
+		Ciphertext: hex.EncodeToString(ciphertext),
+		IV:         ivHex,
+		Steps:      apiSteps,
 	}
 
 	c.JSON(http.StatusOK, response)
 }
 
-// Simulación RSA
+// RSA
 func handleRSAKeyGen(c *gin.Context) {
 	var req RSAKeyGenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -404,25 +423,42 @@ func handleRSAKeyGen(c *gin.Context) {
 		return
 	}
 
-	var steps []Step
-	if req.Explain {
-		steps = []Step{
-			{StepNumber: 1, Description: "Selección de primos", Operation: "Generar dos números primos grandes p y q"},
-			{StepNumber: 2, Description: "Cálculo del módulo", Operation: "n = p × q"},
-			{StepNumber: 3, Description: "Función totiente", Operation: "φ(n) = (p-1) × (q-1)"},
-			{StepNumber: 4, Description: "Selección de exponente público", Operation: "Elegir e tal que gcd(e, φ(n)) = 1"},
-			{StepNumber: 5, Description: "Cálculo de exponente privado", Operation: "d = e⁻¹ mod φ(n)"},
-			{StepNumber: 6, Description: "Generación de claves", Operation: "Clave pública: (e, n), Clave privada: (d, n)"},
-		}
+	// Validar tamaño de clave
+	if req.KeySize < 512 || req.KeySize > 4096 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Key size must be between 512 and 4096 bits"})
+		return
+	}
+
+	// Crear instancia RSA
+	rsaImpl := asymmetric.NewRSA(req.Explain)
+
+	// Generar par de claves
+	keyPair, steps, err := rsaImpl.GenerateKeyPair(req.KeySize)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Guardar claves para usar en sign/verify
+	currentRSAKeyPair = keyPair
+
+	// Convertir steps a formato API
+	var apiSteps []Step
+	for _, step := range steps {
+		apiSteps = append(apiSteps, Step{
+			StepNumber:  step.Step,
+			Description: step.Description,
+			Operation:   step.Operation,
+		})
 	}
 
 	response := RSAKeyGenResponse{
 		Success:    true,
 		KeySize:    req.KeySize,
-		PublicKey:  "65537, " + generateMockModulus(req.KeySize),
-		PrivateKey: "****PRIVADA****",
-		Modulus:    generateMockModulus(req.KeySize),
-		Steps:      steps,
+		PublicKey:  keyPair.FormatPublicKey(),
+		PrivateKey: keyPair.FormatPrivateKey(),
+		Modulus:    keyPair.FormatModulus(),
+		Steps:      apiSteps,
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -435,27 +471,42 @@ func handleRSASign(c *gin.Context) {
 		return
 	}
 
-	var steps []Step
-	if req.Explain {
-		steps = []Step{
-			{StepNumber: 1, Description: "Hash del mensaje", Operation: "Calcular SHA-256 del mensaje"},
-			{StepNumber: 2, Description: "Padding", Operation: "Aplicar esquema de padding PKCS#1"},
-			{StepNumber: 3, Description: "Firma", Operation: "s = (hash^d) mod n usando clave privada"},
-			{StepNumber: 4, Description: "Codificación", Operation: "Convertir firma a hexadecimal"},
-		}
+	// Verificar que hay claves disponibles
+	if currentRSAKeyPair == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No RSA keys available. Generate keys first."})
+		return
+	}
+
+	// Crear instancia RSA
+	rsaImpl := asymmetric.NewRSA(req.Explain)
+
+	// Firmar mensaje
+	signature, messageHash, steps, err := rsaImpl.Sign([]byte(req.Message), currentRSAKeyPair.PrivateKey)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convertir steps a formato API
+	var apiSteps []Step
+	for _, step := range steps {
+		apiSteps = append(apiSteps, Step{
+			StepNumber:  step.Step,
+			Description: step.Description,
+			Operation:   step.Operation,
+		})
 	}
 
 	response := RSASignResponse{
 		Success:     true,
 		Message:     req.Message,
-		MessageHash: "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
-		Signature:   "2d2d2d2d2d424547494e205253412050524956415445204b45592d2d2d2d2d",
-		Steps:       steps,
+		MessageHash: messageHash,
+		Signature:   hex.EncodeToString(signature),
+		Steps:       apiSteps,
 	}
 
 	c.JSON(http.StatusOK, response)
 }
-
 func handleRSAVerify(c *gin.Context) {
 	var req RSAVerifyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -463,24 +514,44 @@ func handleRSAVerify(c *gin.Context) {
 		return
 	}
 
-	var steps []Step
-	if req.Explain {
-		steps = []Step{
-			{StepNumber: 1, Description: "Hash del mensaje", Operation: "Calcular SHA-256 del mensaje recibido"},
-			{StepNumber: 2, Description: "Descifrado de firma", Operation: "m = (s^e) mod n usando clave pública"},
-			{StepNumber: 3, Description: "Comparación", Operation: "Comparar hash calculado con hash descifrado"},
-			{StepNumber: 4, Description: "Resultado", Operation: "Determinar validez de la firma"},
-		}
+	// Verificar que hay claves disponibles
+	if currentRSAKeyPair == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No RSA keys available. Generate keys first."})
+		return
 	}
 
-	// Simulación: firma válida si no está vacía
-	isValid := len(req.Signature) > 10
+	// Decodificar firma de hex
+	signature, err := hex.DecodeString(req.Signature)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid signature format"})
+		return
+	}
+
+	// Crear instancia RSA
+	rsaImpl := asymmetric.NewRSA(req.Explain)
+
+	// Verificar firma
+	isValid, steps, err := rsaImpl.Verify([]byte(req.Message), signature, currentRSAKeyPair.PublicKey)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convertir steps a formato API
+	var apiSteps []Step
+	for _, step := range steps {
+		apiSteps = append(apiSteps, Step{
+			StepNumber:  step.Step,
+			Description: step.Description,
+			Operation:   step.Operation,
+		})
+	}
 
 	response := RSAVerifyResponse{
 		Success: true,
 		Message: req.Message,
 		Valid:   isValid,
-		Steps:   steps,
+		Steps:   apiSteps,
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -500,7 +571,7 @@ func generateMockModulus(keySize int) string {
 	}
 }
 
-// Simulación Hash
+// Hash
 func handleMerkleTree(c *gin.Context) {
 	var req MerkleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -552,7 +623,7 @@ func handleMerkleVerify(c *gin.Context) {
 		return
 	}
 
-	// Simulación simple: válido si proof no está vacío
+	// simple: válido si proof no está vacío
 	isValid := len(req.Proof) > 0 && req.Data != ""
 
 	response := MerkleVerifyResponse{
@@ -600,7 +671,7 @@ func generateTreeVisualization(data []string) string {
 	return visualization
 }
 
-// Simulación Pow
+// Pow
 func handlePowMine(c *gin.Context) {
 	var req PowMineRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -611,23 +682,23 @@ func handlePowMine(c *gin.Context) {
 	var steps []Step
 	if req.Explain {
 		steps = []Step{
-			{StepNumber: 1, Description: "Preparación", Operation: "Combinar datos del bloque, hash anterior y timestamp."},
-			{StepNumber: 2, Description: "Inicialización", Operation: "Comenzar con nonce = 0."},
-			{StepNumber: 3, Description: "Cálculo de hash", Operation: "Calcular SHA-256 de (datos + hash_anterior + nonce)."},
-			{StepNumber: 4, Description: "Verificación", Operation: "Comprobar si el hash tiene suficientes ceros iniciales."},
-			{StepNumber: 5, Description: "Iteración", Operation: "Si no es válido, incrementar nonce y repetir."},
-			{StepNumber: 6, Description: "Éxito", Operation: "Nonce encontrado, bloque válido creado."},
+			{StepNumber: 1, Description: "Preparación", Operation: "Combinar datos del bloque con hash anterior"},
+			{StepNumber: 2, Description: "Inicialización", Operation: "Comenzar búsqueda con nonce = 0"},
+			{StepNumber: 3, Description: "Proceso de minado", Operation: "Incrementar nonce hasta encontrar hash válido"},
+			{StepNumber: 4, Description: "Verificación", Operation: fmt.Sprintf("Hash debe comenzar con %d ceros", req.Difficulty)},
 		}
 	}
 
-	// Calcular intentos esperados basado en dificultad
-	expectedAttempts := calculateExpectedAttempts(req.Difficulty)
+	// Minado real
+	nonce, blockHash, attempts := mineBlock(req.BlockData, req.PreviousHash, req.Difficulty)
 
-	// Simular nonce encontrado
-	nonce := expectedAttempts + (rand.Intn(1000) - 500)
-
-	// Generar hash simulado con ceros requeridos
-	blockHash := generateHashWithDifficulty(req.Difficulty)
+	if req.Explain {
+		steps = append(steps, Step{
+			StepNumber:  5,
+			Description: "Minado completado",
+			Operation:   fmt.Sprintf("Nonce %d encontrado después de %d intentos", nonce, attempts),
+		})
+	}
 
 	response := PowMineResponse{
 		Success:          true,
@@ -636,11 +707,43 @@ func handlePowMine(c *gin.Context) {
 		Nonce:            nonce,
 		BlockHash:        blockHash,
 		Difficulty:       req.Difficulty,
-		ExpectedAttempts: expectedAttempts,
+		ExpectedAttempts: attempts,
 		Steps:            steps,
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+// Función helper para minado real
+func mineBlock(blockData, previousHash string, difficulty int) (int, string, int) {
+	target := make([]byte, difficulty)
+	for i := range target {
+		target[i] = '0'
+	}
+	targetStr := string(target)
+
+	nonce := 0
+	for {
+		// Crear string del bloque
+		blockString := fmt.Sprintf("%s%s%d", blockData, previousHash, nonce)
+
+		// Calcular hash
+		hashBytes := hash.SimpleHash(blockString, false)
+		hashStr := fmt.Sprintf("%x", hashBytes)
+
+		// Verificar si cumple la dificultad
+		if hashStr[:difficulty] == targetStr {
+			return nonce, hashStr, nonce + 1
+		}
+
+		nonce++
+
+		// Límite de seguridad para evitar bucles infinitos en desarrollo
+		if nonce > 1000000 {
+			// Si no encuentra solución, devolver el mejor intento
+			return nonce, hashStr, nonce
+		}
+	}
 }
 
 func handlePowDifficulty(c *gin.Context) {
