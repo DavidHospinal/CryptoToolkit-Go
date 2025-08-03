@@ -6,10 +6,10 @@ console.log('TEST INICIAL - app.js cargado');
 let currentModule = 'otp';
 let currentSection = 'otp-encrypt';
 let learningProgress = {
-    completed: ['basics'],
-    current: 'hash-functions',
-    available: ['basics', 'hash-functions'],
-    locked: ['public-key', 'signatures', 'pow']
+    completed: [],
+    current: 'one-time-pad-(otp)',
+    available: ['one-time-pad-(otp)'],
+    locked: ['aes-encryption', 'rsa-cryptography', 'hash-functions', 'proof-of-work']
 };
 
 // Configuracion de modulos
@@ -347,7 +347,7 @@ function initializeLearningPath() {
     const progressItems = document.querySelectorAll('.progress-item');
     progressItems.forEach((item) => {
         const stepName = item.querySelector('span:last-child').textContent.toLowerCase();
-        const stepKey = stepName.replace(/\\s+/g, '-');
+        const stepKey = stepName.replace(/\s+/g, '-');
 
         item.addEventListener('click', () => handleLearningPathClick(stepKey, item));
         item.style.cursor = 'pointer';
@@ -355,13 +355,14 @@ function initializeLearningPath() {
         updateProgressItemStyle(item, stepKey);
     });
 }
-
 function handleLearningPathClick(stepKey, element) {
+    console.log('Learning Path click detectado:', stepKey);
+
     const stepModuleMap = {
-        'crypto-basics': 'otp',
+        'one-time-pad-(otp)': 'otp',
+        'aes-encryption': 'aes',
+        'rsa-cryptography': 'rsa',
         'hash-functions': 'hash',
-        'public-key-crypto': 'rsa',
-        'digital-signatures': 'rsa',
         'proof-of-work': 'pow'
     };
 
@@ -369,7 +370,12 @@ function handleLearningPathClick(stepKey, element) {
     console.log('Learning Path:', stepKey, 'hacia', targetModule);
 
     if (learningProgress.available.includes(stepKey) || learningProgress.completed.includes(stepKey)) {
-        selectModule(targetModule);
+        if (targetModule) {
+            selectModule(targetModule);
+            updateCurrentStep(stepKey);
+        } else {
+            console.warn('Módulo objetivo no encontrado para:', stepKey);
+        }
     } else {
         showLearningMessage(stepKey);
     }
@@ -398,17 +404,105 @@ function updateProgressItemStyle(item, stepKey) {
         item.style.opacity = '0.5';
     }
 }
-
 function showLearningMessage(stepKey) {
     const messages = {
-        'public-key-crypto': 'Completa Hash Functions para desbloquear Public Key Crypto',
-        'digital-signatures': 'Completa Public Key Crypto para desbloquear Digital Signatures',
-        'proof-of-work': 'Completa Digital Signatures para desbloquear Proof of Work'
+        'aes-encryption': 'Completa One-Time Pad para desbloquear AES Encryption.',
+        'rsa-cryptography': 'Completa AES Encryption para desbloquear RSA Cryptography.',
+        'hash-functions': 'Completa RSA Cryptography para desbloquear Hash Functions.',
+        'proof-of-work': 'Completa Hash Functions para desbloquear Proof of Work.'
     };
 
-    alert(messages[stepKey] || 'Este paso aun no esta disponible');
+    alert(messages[stepKey] || 'Este paso aun no esta disponible.');
+}
+function markStepCompleted(stepKey) {
+    console.log('Marcando paso completado:', stepKey);
+
+    if (!learningProgress.completed.includes(stepKey)) {
+        learningProgress.completed.push(stepKey);
+
+        // Secuencia correcta de módulos
+        const progressSequence = [
+            'one-time-pad-(otp)',
+            'aes-encryption',
+            'rsa-cryptography',
+            'hash-functions',
+            'proof-of-work'
+        ];
+
+        const currentIndex = progressSequence.indexOf(stepKey);
+
+        if (currentIndex >= 0 && currentIndex < progressSequence.length - 1) {
+            const nextStep = progressSequence[currentIndex + 1];
+            if (!learningProgress.available.includes(nextStep)) {
+                learningProgress.available.push(nextStep);
+                learningProgress.current = nextStep;
+                console.log('Desbloqueando siguiente paso:', nextStep);
+            }
+        }
+
+        // Actualizar UI
+        const progressItems = document.querySelectorAll('.progress-item');
+        progressItems.forEach(item => {
+            const itemStepKey = item.querySelector('span:last-child').textContent.toLowerCase().replace(/\s+/g, '-');
+            updateProgressItemStyle(item, itemStepKey);
+        });
+
+        // Mostrar notificación de progreso
+        showProgressNotification(stepKey);
+    }
 }
 
+function updateCurrentStep(stepKey) {
+    if (!learningProgress.completed.includes(stepKey)) {
+        learningProgress.current = stepKey;
+
+        // Actualizar visualización
+        const progressItems = document.querySelectorAll('.progress-item');
+        progressItems.forEach(item => {
+            const itemStepKey = item.querySelector('span:last-child').textContent.toLowerCase().replace(/\s+/g, '-');
+            updateProgressItemStyle(item, itemStepKey);
+        });
+    }
+}
+
+function showProgressNotification(stepKey) {
+    const messages = {
+        'one-time-pad-(otp)': 'Felicidades! Has completado One-Time Pad. AES Encryption desbloqueado.',
+        'aes-encryption': 'Excelente! AES Encryption completado. RSA Cryptography desbloqueado.',
+        'rsa-cryptography': 'Muy bien! RSA Cryptography completado. Hash Functions desbloqueado.',
+        'hash-functions': 'Perfecto! Hash Functions completado. Proof of Work desbloqueado.',
+        'proof-of-work': 'Increíble! Has completado todo el Learning Path!'
+    };
+
+    const message = messages[stepKey];
+    if (message) {
+        // Crear notificación temporal
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 10000;
+            font-weight: bold;
+            max-width: 300px;
+        `;
+        notification.textContent = message;
+
+        document.body.appendChild(notification);
+
+        // Remover después de 4 segundos
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 4000);
+    }
+}
 function showSection(sectionId) {
     const sections = document.querySelectorAll('.crypto-section');
     sections.forEach(section => {
@@ -494,6 +588,10 @@ function displayOTPResults(response) {
     }
 
     resultsArea.scrollIntoView({ behavior: 'smooth' });
+
+    if (!learningProgress.completed.includes('one-time-pad-(otp)')) {
+        markStepCompleted('one-time-pad-(otp)');
+    }
 }
 
 async function hashSHA256() {
@@ -550,6 +648,10 @@ function displaySHA256Results(response) {
     }
 
     resultsArea.scrollIntoView({ behavior: 'smooth' });
+
+    if (!learningProgress.completed.includes('hash-functions')) {
+        markStepCompleted('hash-functions');
+    }
 }
 
 async function demonstrateKeyReuse() {
@@ -744,6 +846,10 @@ function displayMerkleResults(response) {
     }
 
     resultsArea.scrollIntoView({ behavior: 'smooth' });
+
+    if (!learningProgress.completed.includes('hash-functions')) {
+        markStepCompleted('hash-functions');
+    }
 }
 
 async function verifyMerkleProof() {
@@ -841,6 +947,10 @@ function displayRSAKeysResults(response) {
     }
 
     resultsArea.scrollIntoView({ behavior: 'smooth' });
+
+    if (!learningProgress.completed.includes('rsa-cryptography')) {
+        markStepCompleted('rsa-cryptography');
+    }
 }
 
 async function signRSAMessage() {
@@ -986,6 +1096,10 @@ function displayAESResults(response) {
     }
 
     resultsArea.scrollIntoView({ behavior: 'smooth' });
+
+    if (!learningProgress.completed.includes('aes-encryption')) {
+        markStepCompleted('aes-encryption');
+    }
 }
 
 function showAESLearnContent() {
@@ -1140,6 +1254,10 @@ function displayPowResults(response, attempts, timeElapsed) {
     }
 
     resultsArea.scrollIntoView({ behavior: 'smooth' });
+
+    if (!learningProgress.completed.includes('proof-of-work')) {
+        markStepCompleted('proof-of-work');
+    }
 }
 
 async function adjustDifficulty() {
