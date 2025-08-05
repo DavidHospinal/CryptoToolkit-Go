@@ -841,6 +841,19 @@ func main() {
 
 	setupRoutes(r)
 
+	// Rutas adicionales para información del autor y licencia
+	r.GET("/license", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "license.html", gin.H{
+			"title": "License - CryptoToolkit-Go",
+		})
+	})
+
+	r.GET("/about", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "about.html", gin.H{
+			"title": "About - CryptoToolkit-Go",
+		})
+	})
+
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	fmt.Printf("Starting API server on %s\n", addr)
 	fmt.Printf("Web interface: http://%s\n", addr)
