@@ -11,10 +11,10 @@ RUN go mod download
 COPY . .
 
 # Debug: List what we have
-RUN echo "=== DEBUG: Listing project structure ===" && \
-    find . -name "templates" -type d && \
+RUN echo "=== DEBUG: Project structure ===" && \
+    ls -la && \
     ls -la pkg/web/ && \
-    ls -la pkg/web/templates/ 2>/dev/null || echo "templates not found during build"
+    ls -la pkg/web/templates/
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -o main cmd/api/main.go
@@ -30,20 +30,12 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/main .
 
-# Debug: Check what we're copying
-RUN echo "=== DEBUG: Before copying web assets ===" && ls -la /
-
-# Copy entire pkg directory to ensure nothing is missed
+# Copy pkg directory
 COPY --from=builder /app/pkg ./pkg
 
 # Debug: Verify copy worked
-RUN echo "=== DEBUG: After copying ===" && \
-    ls -la pkg/ && \
-    ls -la pkg/web/ && \
-    ls -la pkg/web/templates/ 2>/dev/null || echo "templates missing after copy"
-
-# Copy configs if exists
-COPY --from=builder /app/configs ./configs 2>/dev/null || echo "No configs found"
+RUN echo "=== DEBUG: Final structure ===" && \
+    ls -la pkg/web/templates/
 
 # Expose port
 EXPOSE 8080
