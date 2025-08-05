@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoToolkit-Go - Interactive Blockchain Cryptography</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="container">
+    <header class="header">
+        <div class="header-content">
+            <h1 class="logo">🔐 CryptoToolkit-Go</h1>
+            <p class="subtitle">Interactive Blockchain Cryptography Learning Platform</p>
+            <div class="nav">
+                <button class="nav-btn active" data-section="playground">Playground</button>
+                <button class="nav-btn" data-section="tutorials">Tutorials</button>
+                <button class="nav-btn" data-section="api-docs">API Docs</button>
+                <button class="nav-btn" data-section="cli-guide">CLI Guide</button>
+            </div>
+            <div class="status">
+                <span class="status-indicator online"></span>
+                <span class="api-status-text">API Online</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-content">
+        <aside class="sidebar">
+            <h3>Crypto Modules</h3>
+
+            <div class="module-card otp-module" data-module="otp">
+                <h4>🔑 One-Time Pad (OTP)</h4>
+                <p>Perfect secrecy demonstration</p>
+                <div class="module-buttons">
+                    <button class="btn btn-success" data-action="encrypt">Encrypt</button>
+                    <button class="btn btn-danger" data-action="break">Break</button>
+                    <button class="btn btn-info" data-action="learn">Learn</button>
+                </div>
+            </div>
+
+            <div class="module-card aes-module" data-module="aes">
+                <h4>🛡️ AES Encryption</h4>
+                <p>Modern symmetric encryption</p>
+                <div class="module-buttons">
+                    <button class="btn btn-success" data-action="aes-encrypt">Encrypt</button>
+                    <button class="btn btn-warning" data-action="aes-modes">Modes</button>
+                    <button class="btn btn-info" data-action="aes-learn">Learn</button>
+                </div>
+            </div>
+
+            <div class="module-card rsa-module" data-module="rsa">
+                <h4>🔐 RSA Cryptography</h4>
+                <p>
+                    Asymmetric public-key cryptography from scratch</p>
+                <div class="module-buttons">
+                    <button class="btn btn-success" data-action="rsa-keygen">KeyGen</button>
+                    <button class="btn btn-warning" data-action="rsa-sign">Sign</button>
+                    <button class="btn btn-info" data-action="rsa-verify">Verify</button>
+                </div>
+            </div>
+
+            <div class="module-card hash-module" data-module="hash">
+                <h4>📊 Hash Functions</h4>
+                <p>SHA-256, Merkle Trees</p>
+                <div class="module-buttons">
+                    <button class="btn btn-success" data-action="sha256">SHA-256</button>
+                    <button class="btn btn-warning" data-action="merkle">Merkle</button>
+                    <button class="btn btn-info" data-action="hash-learn">Learn</button>
+                </div>
+            </div>
+
+            <div class="module-card pow-module" data-module="pow">
+                <h4>⛏️ Proof of Work</h4>
+                <p>Mining simulation & difficulty</p>
+                <div class="module-buttons">
+                    <button class="btn btn-success" data-action="pow-mine">Mine</button>
+                    <button class="btn btn-warning" data-action="pow-difficulty">Difficulty++</button>
+                    <button class="btn btn-info" data-action="pow-learn">Learn</button>
+                </div>
+            </div>
+
+            <div class="learning-path">
+                <h3>Learning Path</h3>
+                <div class="progress-item">
+                    <span class="progress-icon">○</span>
+                    <span>One-Time Pad (OTP)</span>
+                </div>
+                <div class="progress-item">
+                    <span class="progress-icon">🔒</span>
+                    <span>AES Encryption</span>
+                </div>
+                <div class="progress-item">
+                    <span class="progress-icon">🔒</span>
+                    <span>RSA Cryptography</span>
+                </div>
+                <div class="progress-item">
+                    <span class="progress-icon">🔒</span>
+                    <span>Hash Functions</span>
+                </div>
+                <div class="progress-item">
+                    <span class="progress-icon">🔒</span>
+                    <span>Proof of Work</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="content">
+            <section id="otp-section" class="crypto-section active">
+                <h2>One-Time Pad Encryption</h2>
+                <p>Experience perfect secrecy with interactive OTP encryption</p>
+
+                <div class="input-area">
+                    <div class="input-group">
+                        <label for="otp-message">Message to encrypt:</label>
+                        <input type="text" id="otp-message" placeholder="Hello Blockchain!" value="Hello Blockchain!">
+                    </div>
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="otp-explain"> Show step-by-step explanation
+                        </label>
+                    </div>
+                    <button class="btn btn-primary" data-action="execute-encrypt">Encrypt Message</button>
+                </div>
+
+                <div id="otp-results" class="results-area" style="display: none;">
+                    <div class="result-card">
+                        <h4>Encryption Results</h4>
+                        <div class="result-item">
+                            <strong>Original Message:</strong>
+                            <span id="otp-original"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Generated Key:</strong>
+                            <code id="otp-key"></code>
+                        </div>
+                        <div class="result-item">
+                            <strong>Ciphertext:</strong>
+                            <code id="otp-cipher"></code>
+                        </div>
+                    </div>
+
+                    <div id="otp-steps" class="steps-container" style="display: none;">
+                        <h4>Step-by-Step Breakdown</h4>
+                        <div id="otp-steps-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="otp-break-section" class="crypto-section">
+                <h2>OTP Security Demonstration</h2>
+                <p>See why key reuse breaks perfect secrecy</p>
+
+                <div class="input-area">
+                    <div class="input-group">
+                        <label for="break-msg1">First Message:</label>
+                        <input type="text" id="break-msg1" placeholder="attack at dawn" value="attack at dawn">
+                    </div>
+                    <div class="input-group">
+                        <label for="break-msg2">Second Message:</label>
+                        <input type="text" id="break-msg2" placeholder="attack at dusk" value="attack at dusk">
+                    </div>
+                    <button class="btn btn-danger" onclick="demonstrateKeyReuse()">Demonstrate Attack</button>
+                </div>
+
+                <div id="break-results" class="results-area" style="display: none;">
+                    <div class="result-card danger">
+                        <h4>Security Vulnerability Revealed</h4>
+                        <div class="result-item">
+                            <strong>Message 1:</strong>
+                            <span id="break-original1"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Message 2:</strong>
+                            <span id="break-original2"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Cipher 1:</strong>
+                            <code id="break-cipher1"></code>
+                        </div>
+                        <div class="result-item">
+                            <strong>Cipher 2:</strong>
+                            <code id="break-cipher2"></code>
+                        </div>
+                        <div class="result-item">
+                            <strong>XOR Result:</strong>
+                            <code id="break-xor"></code>
+                        </div>
+                        <div class="result-item warning">
+                            <strong>Revealed Information:</strong>
+                            <span id="break-revealed"></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="sha256-section" class="crypto-section">
+                <h2>SHA-256 Hash Function</h2>
+                <p>Watch the SHA-256 algorithm work step-by-step</p>
+
+                <div class="input-area">
+                    <div class="input-group">
+                        <label for="sha256-input">Input to hash:</label>
+                        <input type="text" id="sha256-input" placeholder="blockchain" value="blockchain">
+                    </div>
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="sha256-explain"> Show algorithm steps
+                        </label>
+                    </div>
+                    <button class="btn btn-primary" onclick="hashSHA256()">Calculate Hash</button>
+                </div>
+
+                <div id="sha256-results" class="results-area" style="display: none;">
+                    <div class="result-card">
+                        <h4>SHA-256 Hash Result</h4>
+                        <div class="result-item">
+                            <strong>Input:</strong>
+                            <span id="sha256-original"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>SHA-256 Hash:</strong>
+                            <code id="sha256-hash"></code>
+                        </div>
+                        <div class="result-item">
+                            <strong>Hash Length:</strong>
+                            <span>256 bits (32 bytes)</span>
+                        </div>
+
+                        <div id="sha256-steps" class="steps-container" style="display: none;">
+                            <h4>Proceso del Algoritmo SHA-256</h4>
+                            <div id="sha256-steps-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section id="merkle-section" class="crypto-section">
+                <h2>Merkle Tree</h2>
+                <p>Árbol de Merkle - Estructura de datos para verificación eficiente de integridad.</p>
+
+                <div class="input-area">
+                    <div class="input-group">
+                        <label for="merkle-data">Datos para el árbol (separados por comas):</label>
+                        <input type="text" id="merkle-data" placeholder="transaccion1, transaccion2, transaccion3, transaccion4" value="transaccion1, transaccion2, transaccion3, transaccion4">
+                    </div>
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="merkle-explain"> Mostrar construcción paso a paso del árbol.
+                        </label>
+                    </div>
+                    <button class="btn btn-primary" data-action="execute-merkle">Construir Árbol de Merkle</button>
+                </div>
+
+                <div id="merkle-results" class="results-area" style="display: none;">
+                    <div class="result-card">
+                        <h4>Árbol de Merkle Construido</h4>
+                        <div class="result-item">
+                            <strong>Datos Originales:</strong>
+                            <span id="merkle-original-data"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Raíz de Merkle:</strong>
+                            <code id="merkle-root"></code>
+                        </div>
+                        <div class="result-item">
+                            <strong>Número de Hojas:</strong>
+                            <span id="merkle-leaves-count"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Altura del Árbol:</strong>
+                            <span id="merkle-height"></span>
+                        </div>
+                    </div>
+
+                    <div id="merkle-tree-visual" class="result-card" style="margin-top: 15px;">
+                        <h4>Visualización del Árbol</h4>
+                        <div id="merkle-tree-diagram" style="font-family: monospace; white-space: pre-line; background: #1a1a2e; padding: 15px; border-radius: 8px; color: #e2e8f0;"></div>
+                    </div>
+
+                    <div id="merkle-steps" class="steps-container" style="display: none;">
+                        <h4>Proceso de Construcción</h4>
+                        <div id="merkle-steps-list"></div>
+                    </div>
+                </div>
+
+                <div class="input-area" style="margin-top: 20px;">
+                    <h3>Verificación de Merkle Proof</h3>
+                    <div class="input-group">
+                        <label for="merkle-verify-data">Dato a verificar:</label>
+                        <input type="text" id="merkle-verify-data" placeholder="transaccion1" value="transaccion1">
+                    </div>
+                    <div class="input-group">
+                        <label for="merkle-proof">Merkle Proof (separado por comas):</label>
+                        <input type="text" id="merkle-proof" placeholder="hash1,hash2,hash3">
+                    </div>
+                    <button class="btn btn-info" data-action="execute-merkle-verify">Verificar Merkle Proof</button>
+                </div>
+
+                <div id="merkle-verify-results" class="results-area" style="display: none;">
+                    <div class="result-card">
+                        <h4>Resultado de Verificación</h4>
+                        <div class="result-item">
+                            <strong>Estado:</strong>
+                            <span id="merkle-verification-status"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Dato Verificado:</strong>
+                            <span id="merkle-verified-data"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Proof Válido:</strong>
+                            <span id="merkle-proof-valid"></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="pow-section" class="crypto-section">
+                <h2>Proof of Work Mining</h2>
+                <p>Prueba de Trabajo - Algoritmo de consenso utilizado en Bitcoin para validar transacciones.</p>
+
+                <div class="input-area">
+                    <div class="input-group">
+                        <label for="pow-block-data">Datos del bloque:</label>
+                        <input type="text" id="pow-block-data" placeholder="Alice -> Bob: 10 BTC" value="Alice -> Bob: 10 BTC">
+                    </div>
+                    <div class="input-group">
+                        <label for="pow-previous-hash">Hash del bloque anterior:</label>
+                        <input type="text" id="pow-previous-hash" placeholder="000abc123..." value="0000abcd1234567890abcdef1234567890abcdef1234567890abcdef12345678">
+                    </div>
+                    <div class="input-group">
+                        <label for="pow-difficulty">Dificultad (número de ceros iniciales):</label>
+                        <select id="pow-difficulty">
+                            <option value="2">2 ceros (Muy fácil)</option>
+                            <option value="3">3 ceros (Fácil)</option>
+                            <option value="4" selected>4 ceros (Medio)</option>
+                            <option value="5">5 ceros (Difícil)</option>
+                            <option value="6">6 ceros (Muy difícil)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="pow-explain" checked> Mostrar proceso de minado paso a paso.
+                        </label>
+                    </div>
+                    <button class="btn btn-primary" data-action="execute-pow-mine">Iniciar Minado</button>
+                    <button class="btn btn-secondary" id="pow-stop-btn" style="display: none;" onclick="stopMining()">Detener Minado</button>
+                </div>
+
+                <div id="pow-mining-status" class="result-card" style="display: none; margin-top: 15px;">
+                    <h4>Estado del Minado</h4>
+                    <div class="result-item">
+                        <strong>Estado:</strong>
+                        <span id="pow-status">Preparando...</span>
+                    </div>
+                    <div class="result-item">
+                        <strong>Intentos Realizados:</strong>
+                        <span id="pow-attempts">0</span>
+                    </div>
+                    <div class="result-item">
+                        <strong>Hash Rate:</strong>
+                        <span id="pow-hashrate">0 H/s</span>
+                    </div>
+                    <div class="result-item">
+                        <strong>Tiempo Transcurrido:</strong>
+                        <span id="pow-time">0 s</span>
+                    </div>
+                </div>
+
+                <div id="pow-results" class="results-area" style="display: none;">
+                    <div class="result-card">
+                        <h4>Bloque Minado Exitosamente</h4>
+                        <div class="result-item">
+                            <strong>Datos del Bloque:</strong>
+                            <span id="pow-mined-data"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Hash Anterior:</strong>
+                            <code id="pow-mined-prev-hash"></code>
+                        </div>
+                        <div class="result-item">
+                            <strong>Nonce Encontrado:</strong>
+                            <span id="pow-nonce"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Hash del Bloque:</strong>
+                            <code id="pow-block-hash"></code>
+                        </div>
+                        <div class="result-item">
+                            <strong>Dificultad:</strong>
+                            <span id="pow-final-difficulty"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Total de Intentos:</strong>
+                            <span id="pow-total-attempts"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Tiempo Total:</strong>
+                            <span id="pow-total-time"></span>
+                        </div>
+                    </div>
+
+                    <div id="pow-steps" class="steps-container" style="display: none;">
+                        <h4>Proceso de Minado</h4>
+                        <div id="pow-steps-list"></div>
+                    </div>
+                </div>
+
+                <div class="input-area" style="margin-top: 20px;">
+                    <h3>Ajuste de Dificultad</h3>
+                    <div class="input-group">
+                        <label for="pow-target-time">Tiempo objetivo por bloque (segundos):</label>
+                        <input type="number" id="pow-target-time" value="10" min="1" max="60">
+                    </div>
+                    <div class="input-group">
+                        <label for="pow-actual-time">Tiempo actual promedio:</label>
+                        <input type="number" id="pow-actual-time" value="15" min="1" max="120">
+                    </div>
+                    <button class="btn btn-warning" data-action="execute-pow-difficulty">Calcular Nueva Dificultad</button>
+                </div>
+
+                <div id="pow-difficulty-results" class="results-area" style="display: none;">
+                    <div class="result-card">
+                        <h4>Ajuste de Dificultad</h4>
+                        <div class="result-item">
+                            <strong>Dificultad Actual:</strong>
+                            <span id="pow-current-difficulty"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Nueva Dificultad:</strong>
+                            <span id="pow-new-difficulty"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Factor de Ajuste:</strong>
+                            <span id="pow-adjustment-factor"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Cambio:</strong>
+                            <span id="pow-difficulty-change"></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            <section id="aes-section" class="crypto-section">
+                <h2>AES Encryption</h2>
+                <p>Advanced Encryption Standard - Industry standard symmetric encryption</p>
+
+                <div class="input-area">
+                    <div class="input-group">
+                        <label for="aes-message">Message to encrypt:</label>
+                        <input type="text" id="aes-message" placeholder="Confidential data" value="Confidential data">
+                    </div>
+                    <div class="input-group">
+                        <label for="aes-key">Encryption key (32 characters for AES-256):</label>
+                        <input type="text" id="aes-key" placeholder="MySecretKey123456789012345678901" value="MySecretKey123456789012345678901">
+                    </div>
+                    <div class="input-group">
+                        <label for="aes-mode">Encryption mode:</label>
+                        <select id="aes-mode">
+                            <option value="CBC">CBC (Cipher Block Chaining)</option>
+                            <option value="ECB">ECB (Electronic Codebook)</option>
+                            <option value="CTR">CTR (Counter Mode)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="aes-explain"> Show encryption process
+                        </label>
+                    </div>
+                    <button class="btn btn-primary" data-action="execute-aes-encrypt">Encrypt with AES</button>
+                </div>
+
+                <div id="aes-results" class="results-area" style="display: none;">
+                    <div class="result-card">
+                        <h4>AES Encryption Results</h4>
+                        <div class="result-item">
+                            <strong>Original Message:</strong>
+                            <span id="aes-original"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Encryption Key:</strong>
+                            <code id="aes-used-key"></code>
+                        </div>
+                        <div class="result-item">
+                            <strong>Mode:</strong>
+                            <span id="aes-used-mode"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Ciphertext:</strong>
+                            <code id="aes-ciphertext"></code>
+                        </div>
+                        <div class="result-item">
+                            <strong>IV (Initialization Vector):</strong>
+                            <code id="aes-iv"></code>
+                        </div>
+                    </div>
+
+                    <div id="aes-steps" class="steps-container" style="display: none;">
+                        <h4>Encryption Process</h4>
+                        <div id="aes-steps-list"></div>
+                    </div>
+                </div>
+            </section>
+            <section id="rsa-section" class="crypto-section">
+                <h2>RSA Cryptography</h2>
+                <p>Rivest-Shamir-Adleman - Criptografía de clave pública para cifrado y firmas digitales.</p>
+
+                <div class="input-area">
+                    <div class="input-group">
+                        <label for="rsa-key-size">Tamaño de clave RSA:</label>
+                        <select id="rsa-key-size">
+                            <option value="1024">1024 bits (Solo para pruebas)</option>
+                            <option value="2048" selected>2048 bits (Recomendado)</option>
+                            <option value="4096">4096 bits (Máxima seguridad)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="rsa-explain"> Mostrar proceso de generación de claves.
+                        </label>
+                    </div>
+                    <button class="btn btn-primary" data-action="execute-rsa-keygen">Generar Par de Claves RSA</button>
+                </div>
+
+                <div id="rsa-keys-results" class="results-area" style="display: none;">
+                    <div class="result-card">
+                        <h4>Claves RSA Generadas</h4>
+                        <div class="result-item">
+                            <strong>Tamaño de Clave:</strong>
+                            <span id="rsa-key-size-result"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Clave Pública (e, n):</strong>
+                            <code id="rsa-public-key"></code>
+                        </div>
+                        <div class="result-item">
+                            <strong>Clave Privada (d, n):</strong>
+                            <code id="rsa-private-key"></code>
+                        </div>
+                        <div class="result-item">
+                            <strong>Módulo (n):</strong>
+                            <code id="rsa-modulus"></code>
+                        </div>
+                    </div>
+
+                    <div id="rsa-keygen-steps" class="steps-container" style="display: none;">
+                        <h4>Proceso de Generación de Claves</h4>
+                        <div id="rsa-keygen-steps-list"></div>
+                    </div>
+                </div>
+
+                <div class="input-area" style="margin-top: 20px;">
+                    <h3>Firma Digital RSA</h3>
+                    <div class="input-group">
+                        <label for="rsa-message-sign">Mensaje a firmar:</label>
+                        <input type="text" id="rsa-message-sign" placeholder="Documento importante" value="Documento importante">
+                    </div>
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="rsa-sign-explain"> Mostrar proceso de firma digital.
+                        </label>
+                    </div>
+                    <button class="btn btn-warning" data-action="execute-rsa-sign">Firmar Mensaje</button>
+                </div>
+
+                <div id="rsa-sign-results" class="results-area" style="display: none;">
+                    <div class="result-card">
+                        <h4>Firma Digital RSA</h4>
+                        <div class="result-item">
+                            <strong>Mensaje Original:</strong>
+                            <span id="rsa-signed-message"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Hash del Mensaje (SHA-256):</strong>
+                            <code id="rsa-message-hash"></code>
+                        </div>
+                        <div class="result-item">
+                            <strong>Firma Digital:</strong>
+                            <code id="rsa-signature"></code>
+                        </div>
+                    </div>
+
+                    <div id="rsa-sign-steps" class="steps-container" style="display: none;">
+                        <h4>Proceso de Firma Digital</h4>
+                        <div id="rsa-sign-steps-list"></div>
+                    </div>
+                </div>
+
+                <div class="input-area" style="margin-top: 20px;">
+                    <h3>Verificación de Firma RSA</h3>
+                    <div class="input-group">
+                        <label for="rsa-message-verify">Mensaje a verificar:</label>
+                        <input type="text" id="rsa-message-verify" placeholder="Documento importante" value="Documento importante">
+                    </div>
+                    <div class="input-group">
+                        <label for="rsa-signature-verify">Firma a verificar:</label>
+                        <input type="text" id="rsa-signature-verify" placeholder="Pegar firma aquí">
+                    </div>
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="rsa-verify-explain"> Mostrar proceso de verificación.
+                        </label>
+                    </div>
+                    <button class="btn btn-info" data-action="execute-rsa-verify">Verificar Firma</button>
+                </div>
+
+                <div id="rsa-verify-results" class="results-area" style="display: none;">
+                    <div class="result-card">
+                        <h4>Resultado de Verificación</h4>
+                        <div class="result-item">
+                            <strong>Estado de Verificación:</strong>
+                            <span id="rsa-verification-status"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Mensaje Verificado:</strong>
+                            <span id="rsa-verified-message"></span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Integridad:</strong>
+                            <span id="rsa-integrity-status"></span>
+                        </div>
+                    </div>
+
+                    <div id="rsa-verify-steps" class="steps-container" style="display: none;">
+                        <h4>Proceso de Verificación</h4>
+                        <div id="rsa-verify-steps-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Footer  -->
+            <footer class="crypto-footer">
+                <div class="footer-content">
+                    <div class="author-info">
+                        <img src="/static/images/hospinal-systems-logo.png" alt="Oscar David Hospinal R." class="author-avatar">
+                        <div class="author-details">
+                            <h4>Oscar David Hospinal R.</h4>
+                            <p>Master's Degree in Information Technology and Management</p>
+                            <p class="creator-label">Creator & Developer</p>
+                        </div>
+                    </div>
+                    <div class="footer-links">
+                        <a href="/license" class="footer-link">📄 License</a>
+                        <a href="https://portfolio-cv-oscardavid-hospinal.vercel.app/" class="footer-link">ℹ️ About</a>
+                        <a href="https://hospinalsystems.carrd.co/" class="footer-link">🔗
+                            Portfolio</a>
+                    </div>
+                </div>
+            </footer>
+
+
+
+        </main>
+    </div>
+</div>
+
+<script src="/static/js/app.js"></script>
+
+<!-- Tooltips educativos -->
+<script src="/static/js/tooltips.js"></script>
+
+</body>
+</html>
