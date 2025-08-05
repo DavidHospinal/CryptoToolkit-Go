@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -854,7 +855,12 @@ func main() {
 		})
 	})
 
-	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = fmt.Sprintf("%d", cfg.Server.Port)
+	}
+	addr := fmt.Sprintf(":%s", port)
+
 	fmt.Printf("Starting API server on %s\n", addr)
 	fmt.Printf("Web interface: http://%s\n", addr)
 
