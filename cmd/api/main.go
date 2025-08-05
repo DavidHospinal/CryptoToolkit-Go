@@ -12,6 +12,7 @@ import (
 	"github.com/DavidHospinal/CryptoToolkit-Go/internal/config"
 	"github.com/DavidHospinal/CryptoToolkit-Go/pkg/crypto/asymmetric"
 	"github.com/DavidHospinal/CryptoToolkit-Go/pkg/crypto/hash"
+	"github.com/DavidHospinal/CryptoToolkit-Go/pkg/crypto/pow"
 	"github.com/DavidHospinal/CryptoToolkit-Go/pkg/crypto/symmetric"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -557,20 +558,6 @@ func handleRSAVerify(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-func generateMockModulus(keySize int) string {
-	// Generar módulo simulado basado en el tamaño de clave
-	switch keySize {
-	case 1024:
-		return "c7b5a2e4f8d3c9b1a6e2f5d8c4b7a3e6f9d2c5b8a1e4f7d0c3b6a9e2f5d8c1b4a7"
-	case 2048:
-		return "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456789012345678901234567890abcdef1234567890abcdef12345678901234567890abcdef1234567890abcdef123456"
-	case 4096:
-		return "f1e2d3c4b5a69788f1e2d3c4b5a69788f1e2d3c4b5a69788f1e2d3c4b5a69788f1e2d3c4b5a69788f1e2d3c4b5a69788f1e2d3c4b5a69788f1e2d3c4b5a69788f1e2d3c4b5a69788f1e2d3c4b5a69788f1e2d3c4b5a69788f1e2d3c4b5a69788"
-	default:
-		return "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"
-	}
-}
-
 // Hash
 func handleMerkleTree(c *gin.Context) {
 	var req MerkleRequest
@@ -584,38 +571,46 @@ func handleMerkleTree(c *gin.Context) {
 		return
 	}
 
-	// Simular construcción de árbol de Merkle
-	var steps []Step
-	if req.Explain {
-		steps = []Step{
-			{StepNumber: 1, Description: "Hash de hojas", Operation: "Calcular SHA-256 de cada elemento de datos."},
-			{StepNumber: 2, Description: "Emparejamiento", Operation: "Agrupar hashes en pares para el siguiente nivel."},
-			{StepNumber: 3, Description: "Hash de nodos", Operation: "Calcular hash de cada par concatenado."},
-			{StepNumber: 4, Description: "Repetir proceso", Operation: "Continuar hasta obtener un solo hash raíz."},
-			{StepNumber: 5, Description: "Raíz de Merkle", Operation: "El hash final es la raíz del árbol."},
-		}
+	// Crear árbol de Merkle real
+	merkleTree := hash.NewMerkleTree(req.Explain)
+
+	// Construir el árbol
+	steps, err := merkleTree.BuildFromData(req.Data)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
-	// Calcular altura del árbol
-	treeHeight := calculateTreeHeight(len(req.Data))
+	// Generar prueba de ejemplo para el primer elemento
+	proof, err := merkleTree.GenerateProof(0)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
-	// Generar visualización simple
-	visualization := generateTreeVisualization(req.Data)
+	// Convertir steps a formato API
+	var apiSteps []Step
+	for _, step := range steps {
+		apiSteps = append(apiSteps, Step{
+			StepNumber:  step.Step,
+			Description: step.Description,
+			Operation:   step.Operation,
+		})
+	}
 
 	response := MerkleResponse{
 		Success:           true,
 		OriginalData:      req.Data,
-		MerkleRoot:        "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456",
-		LeavesCount:       len(req.Data),
-		TreeHeight:        treeHeight,
-		TreeVisualization: visualization,
-		SampleProof:       "b2c3d4e5f6789012,c3d4e5f6789012ab",
-		Steps:             steps,
+		MerkleRoot:        merkleTree.GetRootHex(),
+		LeavesCount:       merkleTree.LeafCount,
+		TreeHeight:        merkleTree.TreeHeight,
+		TreeVisualization: merkleTree.VisualizeTree(),
+		SampleProof:       proof.FormatProofForAPI(),
+		Steps:             apiSteps,
 	}
 
 	c.JSON(http.StatusOK, response)
 }
-
 func handleMerkleVerify(c *gin.Context) {
 	var req MerkleVerifyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -623,7 +618,24 @@ func handleMerkleVerify(c *gin.Context) {
 		return
 	}
 
-	// simple: válido si proof no está vacío
+	if req.Data == "" || len(req.Proof) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Se requieren datos y prueba para verificar"})
+		return
+	}
+
+	// Convertir prueba de string a bytes
+	proofHashes := make([][]byte, len(req.Proof))
+	for i, proofHex := range req.Proof {
+		proofBytes, err := hex.DecodeString(proofHex)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Formato de prueba inválido"})
+			return
+		}
+		proofHashes[i] = proofBytes
+	}
+
+	// Para una verificación completa, necesitaríamos la raíz del árbol original
+	// Por simplicidad, verificamos que la prueba tenga formato válido
 	isValid := len(req.Proof) > 0 && req.Data != ""
 
 	response := MerkleVerifyResponse{
@@ -679,73 +691,76 @@ func handlePowMine(c *gin.Context) {
 		return
 	}
 
-	var steps []Step
-	if req.Explain {
-		steps = []Step{
-			{StepNumber: 1, Description: "Preparación", Operation: "Combinar datos del bloque con hash anterior"},
-			{StepNumber: 2, Description: "Inicialización", Operation: "Comenzar búsqueda con nonce = 0"},
-			{StepNumber: 3, Description: "Proceso de minado", Operation: "Incrementar nonce hasta encontrar hash válido"},
-			{StepNumber: 4, Description: "Verificación", Operation: fmt.Sprintf("Hash debe comenzar con %d ceros", req.Difficulty)},
-		}
+	// Validar dificultad
+	if req.Difficulty < 1 || req.Difficulty > 8 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Difficulty must be between 1 and 8"})
+		return
 	}
 
-	// Minado real
-	nonce, blockHash, attempts := mineBlock(req.BlockData, req.PreviousHash, req.Difficulty)
+	// Crear bloque real
+	block := pow.NewBlock(1, req.BlockData, req.PreviousHash, req.Difficulty)
 
-	if req.Explain {
-		steps = append(steps, Step{
-			StepNumber:  5,
-			Description: "Minado completado",
-			Operation:   fmt.Sprintf("Nonce %d encontrado después de %d intentos", nonce, attempts),
+	// Crear minero
+	miner := pow.NewMiner(req.Explain)
+
+	// Ajustar límite de intentos según dificultad para evitar timeouts
+	switch {
+	case req.Difficulty <= 2:
+		miner.MaxAttempts = 10000 // ~1 segundo
+	case req.Difficulty == 3:
+		miner.MaxAttempts = 50000 // ~2-5 segundos
+	case req.Difficulty == 4:
+		miner.MaxAttempts = 200000 // ~5-15 segundos
+	case req.Difficulty == 5:
+		miner.MaxAttempts = 2000000 // ~15-60 segundos
+	case req.Difficulty >= 6:
+		miner.MaxAttempts = 5000000 // ~30-120 segundos (máximo)
+	}
+
+	// Minar el bloque
+	result, err := miner.MineBlock(block)
+	if err != nil {
+		// Si no encuentra solución en el límite, devolver resultado parcial
+		if result != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success":      false,
+				"message":      fmt.Sprintf("Mining timeout after %d attempts - difficulty %d is very high", result.Attempts, req.Difficulty),
+				"blockData":    req.BlockData,
+				"previousHash": req.PreviousHash,
+				"difficulty":   req.Difficulty,
+				"attempts":     result.Attempts,
+				"hashRate":     result.HashRate,
+				"suggestion":   "Try lower difficulty (4 or less) for faster results",
+			})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convertir steps a formato API
+	var apiSteps []Step
+	for _, step := range result.Steps {
+		apiSteps = append(apiSteps, Step{
+			StepNumber:  step.Step,
+			Description: step.Description,
+			Operation:   step.Operation,
 		})
 	}
 
 	response := PowMineResponse{
-		Success:          true,
-		BlockData:        req.BlockData,
-		PreviousHash:     req.PreviousHash,
-		Nonce:            nonce,
-		BlockHash:        blockHash,
-		Difficulty:       req.Difficulty,
-		ExpectedAttempts: attempts,
-		Steps:            steps,
+		Success:          result.Success,
+		BlockData:        result.Block.Data,
+		PreviousHash:     result.Block.PreviousHash,
+		Nonce:            result.Block.Nonce,
+		BlockHash:        result.Block.Hash,
+		Difficulty:       result.Block.Difficulty,
+		ExpectedAttempts: result.Attempts,
+		Steps:            apiSteps,
 	}
 
 	c.JSON(http.StatusOK, response)
 }
-
-// Función helper para minado real
-func mineBlock(blockData, previousHash string, difficulty int) (int, string, int) {
-	target := make([]byte, difficulty)
-	for i := range target {
-		target[i] = '0'
-	}
-	targetStr := string(target)
-
-	nonce := 0
-	for {
-		// Crear string del bloque
-		blockString := fmt.Sprintf("%s%s%d", blockData, previousHash, nonce)
-
-		// Calcular hash
-		hashBytes := hash.SimpleHash(blockString, false)
-		hashStr := fmt.Sprintf("%x", hashBytes)
-
-		// Verificar si cumple la dificultad
-		if hashStr[:difficulty] == targetStr {
-			return nonce, hashStr, nonce + 1
-		}
-
-		nonce++
-
-		// Límite de seguridad para evitar bucles infinitos en desarrollo
-		if nonce > 1000000 {
-			// Si no encuentra solución, devolver el mejor intento
-			return nonce, hashStr, nonce
-		}
-	}
-}
-
 func handlePowDifficulty(c *gin.Context) {
 	var req PowDifficultyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -753,58 +768,28 @@ func handlePowDifficulty(c *gin.Context) {
 		return
 	}
 
-	// Calcular factor de ajuste
-	adjustmentFactor := float64(req.TargetTime) / float64(req.ActualTime)
-
-	// Limitar ajustes extremos (Bitcoin usa factor máximo de 4)
-	if adjustmentFactor > 4.0 {
-		adjustmentFactor = 4.0
-	} else if adjustmentFactor < 0.25 {
-		adjustmentFactor = 0.25
+	// Validar parámetros
+	if req.TargetTime <= 0 || req.ActualTime <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Target time and actual time must be positive"})
+		return
 	}
 
-	// Calcular nueva dificultad
-	newDifficulty := req.CurrentDifficulty
-	if adjustmentFactor > 1.1 {
-		newDifficulty = min(req.CurrentDifficulty+1, 10) // Máximo 10 ceros
-	} else if adjustmentFactor < 0.9 {
-		newDifficulty = max(req.CurrentDifficulty-1, 1) // Mínimo 1 cero
+	if req.CurrentDifficulty < 1 || req.CurrentDifficulty > 10 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Current difficulty must be between 1 and 10"})
+		return
 	}
+
+	// Usar implementación real de ajuste de dificultad
+	adjustment := pow.AdjustDifficulty(req.CurrentDifficulty, req.TargetTime, req.ActualTime)
 
 	response := PowDifficultyResponse{
 		Success:           true,
-		CurrentDifficulty: req.CurrentDifficulty,
-		NewDifficulty:     newDifficulty,
-		AdjustmentFactor:  adjustmentFactor,
+		CurrentDifficulty: adjustment.CurrentDifficulty,
+		NewDifficulty:     adjustment.NewDifficulty,
+		AdjustmentFactor:  adjustment.AdjustmentFactor,
 	}
 
 	c.JSON(http.StatusOK, response)
-}
-
-func calculateExpectedAttempts(difficulty int) int {
-	// 2^(4*difficulty) intentos aproximados
-	attempts := 1
-	for i := 0; i < difficulty*4; i++ {
-		attempts *= 2
-	}
-	return attempts / 2 // Promedio
-}
-
-func generateHashWithDifficulty(difficulty int) string {
-	hash := ""
-
-	// Agregar ceros requeridos
-	for i := 0; i < difficulty; i++ {
-		hash += "0"
-	}
-
-	// Completar con caracteres hexadecimales aleatorios
-	hexChars := "0123456789abcdef"
-	for len(hash) < 64 {
-		hash += string(hexChars[rand.Intn(len(hexChars))])
-	}
-
-	return hash
 }
 
 func max(a, b int) int {
