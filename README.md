@@ -1,6 +1,9 @@
 ﻿# 🔐 CryptoToolkit-Go
 
 > **Educational Blockchain Cryptography Platform**
+> 
+![Animation-AL002](https://github.com/user-attachments/assets/5c196649-bb59-4fac-9daf-1b320e47b817)
+
 
 An interactive learning platform that implements blockchain cryptography fundamentals from scratch in Go. Perfect for understanding the mathematical and cryptographic foundations behind Bitcoin, Ethereum, and other blockchain technologies.
 
@@ -109,3 +112,5 @@ MIT License - see [LICENSE](LICENSE) for details.
 ---
 
 **Built with ❤️ for blockchain education**
+<img width="699" height="416" alt="hospinal-systems-logo" src="https://github.com/user-attachments/assets/017a1517-94a2-40ab-a196-6ac36007e5e2" />
+
